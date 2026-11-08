@@ -1,0 +1,30 @@
+{
+  "name": "qr-scanner-thunderbird",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Thunderbird extension that finds and decodes 2D codes (Data Matrix, QR, …) in displayed emails, locally and offline.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "watch": "tsx scripts/build.ts --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . && npm run build && web-ext lint --source-dir dist",
+    "test": "vitest run --passWithNoTests",
+    "package": "npm run build && web-ext build --source-dir dist --artifacts-dir dist --filename \"qr-scanner-{version}.xpi\" --overwrite-dest"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "eslint": "10.14.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.1.0",
+    "web-ext": "10.8.0"
+  }
+}

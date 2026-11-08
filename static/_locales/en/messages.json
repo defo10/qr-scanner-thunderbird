@@ -1,0 +1,10 @@
+{
+  "extensionName": {
+    "message": "QR & Data Matrix Scanner",
+    "description": "Name of the extension."
+  },
+  "extensionDescription": {
+    "message": "Finds and decodes Data Matrix, QR and other 2D codes in the displayed email. Works locally and offline.",
+    "description": "Description of the extension."
+  }
+}
