@@ -66,7 +66,22 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   overflow-wrap: anywhere;
 }
 .value b { font-weight: 700; }
-.copy { grid-column: 2; grid-row: 1 / span 2; align-self: center; border-color: var(--border); }
+.actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.copy { border-color: var(--border); white-space: nowrap; }
+.tag {
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
 .errors { padding: 4px 10px 6px; font-size: 11px; color: var(--muted); }
 .badge { padding: 4px 10px; font-weight: 600; }
 `;

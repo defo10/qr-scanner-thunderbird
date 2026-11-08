@@ -86,5 +86,13 @@
   "formatPDF417": {
     "message": "PDF417",
     "description": "Name of the 2D code format."
+  },
+  "copyAsHri": {
+    "message": "Copy as HRI",
+    "description": "Button that copies a GS1 code in bracketed human-readable form, e.g. (01)…(17)…."
+  },
+  "binaryTag": {
+    "message": "binary",
+    "description": "Tag on a code whose payload is binary data, shown as Base64."
   }
 }

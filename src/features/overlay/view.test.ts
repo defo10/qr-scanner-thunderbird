@@ -113,4 +113,32 @@ describe('overlay panel', () => {
     expect(overlay.host()).not.toBeNull();
     expect(overlay.root()?.querySelector('.errors')?.textContent).toBe('broken.png — could not be read');
   });
+
+  it('shows a GS1 code as HRI and offers Copy as HRI next to the raw Copy', async () => {
+    const overlay = anOverlay();
+    const raw = '01040123456789011725123110ABC123\x1D21XYZ789';
+    overlay.send(codesFrom('label.png', aDecodedCode({ text: raw, contentKind: 'GS1', symbologyId: ']d2' })));
+
+    const buttons = [...(overlay.root()?.querySelectorAll('.copy') ?? [])] as HTMLElement[];
+    buttons[0]?.click();
+    buttons[1]?.click();
+    await Promise.resolve();
+
+    expect(overlay.root()?.querySelector('.value')?.textContent).toBe('(01)04012345678901(17)251231(10)ABC123(21)XYZ789');
+    expect(buttons.map(b => b.textContent)).toEqual(['Copied ✓', 'Copied ✓']);
+    expect(overlay.clipboard).toEqual([raw, '(01)04012345678901(17)251231(10)ABC123(21)XYZ789']);
+  });
+
+  it('shows a binary code as Base64 with a binary tag and copies the Base64', async () => {
+    const overlay = anOverlay();
+    overlay.send(codesFrom('blob.png', aDecodedCode({ text: '\x00\x01ÿ', bytesB64: 'AAH/', contentKind: 'Binary' })));
+
+    overlay.click('.copy');
+    await Promise.resolve();
+
+    expect(overlay.root()?.querySelector('.tag')?.textContent).toBe('binary');
+    expect(overlay.root()?.querySelector('.value')?.textContent).toBe('AAH/');
+    expect(overlay.root()?.querySelectorAll('.copy')).toHaveLength(1);
+    expect(overlay.clipboard).toEqual(['AAH/']);
+  });
 });

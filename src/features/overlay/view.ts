@@ -1,4 +1,4 @@
-import { splitUrl } from '../readable-text';
+import { splitUrl, toDisplay, type DisplayText } from '../readable-text';
 import type { Translate } from '../../shared/i18n';
 import type { ScanEntry, SourceError, SourceRef } from '../../shared/types';
 import { copyButton } from './copy-button';
@@ -49,20 +49,25 @@ export function createOverlayView(deps: OverlayViewDeps): OverlayView {
     return s.page === undefined ? s.name : t('sourceWithPage', s.name, s.page);
   };
 
-  const valueNode = (entry: ScanEntry): HTMLElement => {
+  const valueNode = (display: DisplayText): HTMLElement => {
     const value = el('div', 'value');
-    const url = splitUrl(entry.text);
+    const url = display.kind === 'url' ? splitUrl(display.text) : null;
     if (url) value.append(url.beforeHost, el('b', undefined, url.host), url.afterHost);
-    else value.textContent = entry.text;
+    else value.textContent = display.text;
     return value;
   };
 
   const row = (entry: ScanEntry): HTMLElement => {
     const cached = rows.get(entry);
     if (cached) return cached;
+    const display = toDisplay(entry);
     const li = el('li', 'entry');
     const meta = el('div', 'meta', `${t(`format${entry.format}`)} · ${entry.sources.map(sourceLabel)[0] ?? ''}`);
-    li.append(meta, valueNode(entry), copyButton(doc, t, deps.copy, entry.text));
+    if (display.kind === 'binary') meta.append(' ', el('span', 'tag', t('binaryTag')));
+    const actions = el('div', 'actions');
+    actions.append(copyButton(doc, t, deps.copy, display.copy));
+    if (display.hri !== null) actions.append(copyButton(doc, t, deps.copy, display.hri, 'copyAsHri'));
+    li.append(meta, valueNode(display), actions);
     rows.set(entry, li);
     return li;
   };
