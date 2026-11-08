@@ -1,4 +1,8 @@
 import { ALL_CODE_FORMATS } from '../../src/features/decode';
+import { mountOverlay } from '../../src/features/overlay';
+import type { ScanEvent } from '../../src/shared/port-protocol';
+import type { DecodedCode } from '../../src/shared/types';
+import { englishTranslate } from './i18n';
 import { createWorkerClient, startScanService, type ScanSettings } from '../../src/features/scan-pipeline';
 import { createTbApi } from '../../src/platform/tb-api';
 import { createFakeMessenger, type FakeAttachment, type FakeMessage } from '../fakes/fake-messenger';
@@ -33,4 +37,45 @@ export function aRunningScanService(settings: ScanSettings = { formats: ALL_CODE
   const worker = createWorkerClient({ spawn: workers.spawn, loadWasm: nodeZxingWasm });
   startScanService({ tb: createTbApi(mail.messenger), worker, settings: () => settings });
   return { mail, workers };
+}
+
+export function aDecodedCode(overrides: Partial<DecodedCode> = {}): DecodedCode {
+  const text = overrides.text ?? 'HELLO-DATAMATRIX-123';
+  return {
+    format: 'DataMatrix',
+    text,
+    bytesB64: Buffer.from(text, 'latin1').toString('base64'),
+    contentKind: 'Text',
+    symbologyId: ']d1',
+    ...overrides,
+  };
+}
+
+export function codesFrom(attachmentName: string, ...codes: DecodedCode[]): ScanEvent {
+  return { type: 'codes', source: { kind: 'attachment', name: attachmentName, partName: '1.2' }, codes };
+}
+
+/** An overlay in a fresh DOM document with a recording clipboard. Needs a DOM test environment. */
+export function anOverlay(options: { clipboardFails?: boolean } = {}) {
+  const doc = document.implementation.createHTMLDocument('message');
+  const clipboard: string[] = [];
+  const overlay = mountOverlay({
+    document: doc,
+    t: englishTranslate,
+    copy: text => {
+      if (options.clipboardFails) return Promise.reject(new Error('denied'));
+      clipboard.push(text);
+      return Promise.resolve();
+    },
+  });
+  const root = () => overlay.shadowRoot();
+  return {
+    send: (...events: ScanEvent[]) => events.forEach(overlay.handle),
+    clipboard,
+    root,
+    host: () => doc.querySelector('qr-scanner-overlay'),
+    text: () => root()?.textContent ?? '',
+    entries: () => [...(root()?.querySelectorAll('.entry') ?? [])],
+    click: (selector: string) => (root()?.querySelector(selector) as HTMLElement | null)?.click(),
+  };
 }

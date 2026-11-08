@@ -60,6 +60,10 @@ export function createTbApi(m: Messenger) {
       return { onEvent: listener => port.onMessage.addListener(msg => listener(msg as ScanEvent)) };
     },
 
+    getMessage(key: string, substitutions: string[]): string {
+      return m.i18n.getMessage(key, substitutions);
+    },
+
     extensionUrl(path: string): string {
       return m.runtime.getURL(path);
     },

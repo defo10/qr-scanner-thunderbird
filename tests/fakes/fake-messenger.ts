@@ -1,5 +1,6 @@
 import type { Messenger } from '../../src/platform/tb-api';
 import type { ScanEvent } from '../../src/shared/port-protocol';
+import { englishMessage } from '../helpers/i18n';
 
 export interface FakeAttachment {
   readonly name: string;
@@ -57,6 +58,9 @@ export function createFakeMessenger() {
       onConnect: onConnect.api,
       connect: () => { throw new Error('the fake has no display-side runtime.connect'); },
       getURL: path => `moz-extension://fake/${path}`,
+    },
+    i18n: {
+      getMessage: (key, subs) => englishMessage(key, typeof subs === 'string' ? [subs] : subs),
     },
     messages: {
       listAttachments: messageId => {

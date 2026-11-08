@@ -25,3 +25,7 @@ export interface SourceError {
   readonly reason: ErrorReason;
   readonly detail?: Readonly<Record<string, number>>;
 }
+
+export interface ScanEntry extends DecodedCode {
+  readonly sources: readonly SourceRef[];
+}

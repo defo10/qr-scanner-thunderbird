@@ -27,6 +27,16 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/**/*.ts'],
+    rules: {
+      'no-restricted-properties': ['error',
+        ...['innerHTML', 'outerHTML'].map(property => ({ property, message: 'Use textContent; decoded content must never be parsed as HTML.' })),
+        { property: 'insertAdjacentHTML', message: 'Use textContent; decoded content must never be parsed as HTML.' },
+        { object: 'document', property: 'write', message: 'Use DOM APIs with textContent.' },
+      ],
+    },
+  },
+  {
     files: ['src/**/*.ts', 'tests/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', {

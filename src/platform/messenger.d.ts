@@ -30,6 +30,10 @@ declare namespace messenger {
     function getURL(path: string): string;
   }
 
+  namespace i18n {
+    function getMessage(messageName: string, substitutions?: string | string[]): string;
+  }
+
   namespace folders {
     interface MailFolder {
       accountId?: string;

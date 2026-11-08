@@ -6,5 +6,85 @@
   "extensionDescription": {
     "message": "Finds and decodes Data Matrix, QR and other 2D codes in the displayed email. Works locally and offline.",
     "description": "Description of the extension."
+  },
+  "codesCountOne": {
+    "message": "1 code",
+    "description": "Overlay header when exactly one code was found."
+  },
+  "codesCountOther": {
+    "message": "$1 codes",
+    "description": "Overlay header with the number of codes found. $1 = count."
+  },
+  "scanning": {
+    "message": "Scanning…",
+    "description": "Accessible label of the spinner shown while a scan is running."
+  },
+  "minimize": {
+    "message": "Minimize",
+    "description": "Tooltip of the button that collapses the overlay to a badge."
+  },
+  "restore": {
+    "message": "Show codes",
+    "description": "Tooltip of the badge that restores the overlay."
+  },
+  "close": {
+    "message": "Close",
+    "description": "Tooltip of the button that hides the overlay for this message."
+  },
+  "overlayLabel": {
+    "message": "Codes found in this message",
+    "description": "Accessible name of the overlay panel."
+  },
+  "copy": {
+    "message": "Copy",
+    "description": "Button that copies a decoded code."
+  },
+  "copied": {
+    "message": "Copied ✓",
+    "description": "Shown on the copy button for a moment after copying."
+  },
+  "copyFailed": {
+    "message": "Copy failed",
+    "description": "Shown on the copy button when copying failed."
+  },
+  "inlineImage": {
+    "message": "inline image",
+    "description": "Source label for an image embedded in the message body."
+  },
+  "sourceWithPage": {
+    "message": "$1 · p.$2",
+    "description": "Source label for a PDF page. $1 = file name, $2 = page number."
+  },
+  "errorUnreadable": {
+    "message": "$1 — could not be read",
+    "description": "Scan error. $1 = source label."
+  },
+  "errorGeneric": {
+    "message": "$1 — could not be scanned",
+    "description": "Fallback scan error. $1 = source label."
+  },
+  "formatDataMatrix": {
+    "message": "Data Matrix",
+    "description": "Name of the 2D code format."
+  },
+  "formatQRCode": {
+    "message": "QR",
+    "description": "Name of the 2D code format."
+  },
+  "formatMicroQRCode": {
+    "message": "Micro QR",
+    "description": "Name of the 2D code format."
+  },
+  "formatrMQRCode": {
+    "message": "rMQR",
+    "description": "Name of the 2D code format."
+  },
+  "formatAztec": {
+    "message": "Aztec",
+    "description": "Name of the 2D code format."
+  },
+  "formatPDF417": {
+    "message": "PDF417",
+    "description": "Name of the 2D code format."
   }
 }

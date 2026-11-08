@@ -1,14 +1,16 @@
 import { loadImage, createCanvas } from '@napi-rs/canvas';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDecoder, type DecodePixels, type Pixels } from '../../src/features/decode';
 import type { RasterImage } from '../../src/features/image-scan';
 
-const fixturesDir = fileURLToPath(new URL('../fixtures/', import.meta.url));
+// Path-based on purpose: DOM test environments replace the global URL class.
+const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 
 export function fixtureBytes(name: string): Uint8Array {
-  return new Uint8Array(readFileSync(`${fixturesDir}images/${name}`));
+  return new Uint8Array(readFileSync(join(fixturesDir, 'images', name)));
 }
 
 export const nodeRasterImage: RasterImage = async bytes => {
