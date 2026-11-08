@@ -11,3 +11,17 @@ export interface DecodedCode {
   /** ISO/IEC 15424 identifier, e.g. "]d2" for GS1 Data Matrix. */
   readonly symbologyId: string;
 }
+
+export type SourceRef =
+  | { readonly kind: 'attachment'; readonly name: string; readonly partName: string; readonly page?: number }
+  | { readonly kind: 'inline'; readonly name: string; readonly partName?: string; readonly dataUriIndex?: number };
+
+export type ErrorReason =
+  | 'too-large' | 'page-limit' | 'timeout' | 'unreadable'
+  | 'encrypted-pdf' | 'unsupported-type';
+
+export interface SourceError {
+  readonly source: SourceRef;
+  readonly reason: ErrorReason;
+  readonly detail?: Readonly<Record<string, number>>;
+}

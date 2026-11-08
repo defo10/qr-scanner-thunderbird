@@ -1,5 +1,5 @@
 import { context, type BuildOptions } from 'esbuild';
-import { cp, rm } from 'node:fs/promises';
+import { copyFile, cp, rm } from 'node:fs/promises';
 
 // - Unminified with external sourcemaps so add-on reviewers can read the bundles.
 // - Content scripts cannot be ES modules, so the display script is an IIFE;
@@ -15,6 +15,7 @@ const common: BuildOptions = {
 
 const builds: BuildOptions[] = [
   { ...common, format: 'esm', entryPoints: { background: 'src/entries/background.ts' } },
+  { ...common, format: 'esm', entryPoints: { 'scanner-worker': 'src/entries/scanner-worker.ts' } },
   { ...common, format: 'iife', entryPoints: { display: 'src/entries/display.ts' } },
 ];
 
@@ -22,6 +23,7 @@ const watch = process.argv.includes('--watch');
 
 await rm('dist', { recursive: true, force: true });
 await cp('static', 'dist', { recursive: true });
+await copyFile('node_modules/zxing-wasm/dist/reader/zxing_reader.wasm', 'dist/zxing_reader.wasm');
 
 const contexts = await Promise.all(builds.map(b => context(b)));
 if (watch) {

@@ -30,6 +30,45 @@ declare namespace messenger {
     function getURL(path: string): string;
   }
 
+  namespace folders {
+    interface MailFolder {
+      accountId?: string;
+      path?: string;
+      specialUse?: string[];
+      /** Pre-TB 121 single special-use type. */
+      type?: string;
+    }
+  }
+
+  namespace messages {
+    interface MessageHeader {
+      id: number;
+      junk?: boolean;
+      folder?: folders.MailFolder;
+      subject?: string;
+    }
+
+    interface MessageList {
+      id: string | null;
+      messages: MessageHeader[];
+    }
+
+    interface MessageAttachment {
+      contentType: string;
+      name: string;
+      partName: string;
+      size: number;
+      contentId?: string;
+    }
+
+    function listAttachments(messageId: number): Promise<MessageAttachment[]>;
+    function getAttachmentFile(messageId: number, partName: string): Promise<File>;
+  }
+
+  namespace messageDisplay {
+    function getDisplayedMessages(tabId?: number): Promise<messages.MessageList | messages.MessageHeader[]>;
+  }
+
   namespace scripting.messageDisplay {
     interface MessageDisplayScriptDetails {
       id: string;

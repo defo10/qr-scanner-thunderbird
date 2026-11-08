@@ -1,4 +1,3 @@
-import { connectScanPort } from '../platform/tb-api';
+import { defaultTbApi } from '../platform/tb-api';
 
-const port = connectScanPort();
-console.debug('scan port connected', port.name);
+defaultTbApi().connectScanPort().onEvent(event => console.debug('scan event', event));
