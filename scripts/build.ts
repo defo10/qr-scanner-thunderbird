@@ -17,6 +17,7 @@ const builds: BuildOptions[] = [
   { ...common, format: 'esm', entryPoints: { background: 'src/entries/background.ts' } },
   { ...common, format: 'esm', entryPoints: { 'scanner-worker': 'src/entries/scanner-worker.ts' } },
   { ...common, format: 'iife', entryPoints: { display: 'src/entries/display.ts' } },
+  { ...common, format: 'esm', entryPoints: { options: 'src/entries/options.ts' } },
 ];
 
 const watch = process.argv.includes('--watch');

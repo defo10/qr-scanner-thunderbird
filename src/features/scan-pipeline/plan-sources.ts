@@ -24,12 +24,12 @@ export interface SourceCandidates {
 
 // Order: attachments, then cid: parts, then data: URIs. An inline part that is
 // also listed as an attachment is scanned once, as the attachment.
-export function planSources(c: SourceCandidates, options: { readonly scanPdfs: boolean }): PlannedSource[] {
+export function planSources(c: SourceCandidates, options: { readonly scanImageAttachments: boolean; readonly scanPdfs: boolean }): PlannedSource[] {
   const attachments = c.attachments.flatMap((a): PlannedSource[] => {
     const ref: SourceRef = { kind: 'attachment', name: a.name, partName: a.partName };
     const bytes: SourceBytes = { from: 'part', partName: a.partName };
     const mime = scannableImageMime(a.contentType, a.name);
-    if (mime !== null) return [{ kind: 'image', ref, mime, size: a.size, bytes }];
+    if (mime !== null) return options.scanImageAttachments ? [{ kind: 'image', ref, mime, size: a.size, bytes }] : [];
     if (options.scanPdfs && isPdf(a.contentType, a.name)) return [{ kind: 'pdf', ref, mime: 'application/pdf', size: a.size, bytes }];
     return [];
   });

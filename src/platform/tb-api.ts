@@ -89,6 +89,25 @@ export function createTbApi(m: Messenger) {
       set: (key: string, value: unknown): Promise<void> => m.storage.session.set({ [key]: value }),
     },
 
+    // Like onScanPortConnected, must be registered at background top level.
+    onLocalStorageChanged(key: string, listener: () => void): void {
+      m.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && key in changes) listener();
+      });
+    },
+
+    // Without a tab id this sets the default for every message display.
+    async setScanActionEnabled(enabled: boolean): Promise<void> {
+      await (enabled ? m.messageDisplayAction.enable() : m.messageDisplayAction.disable());
+    },
+
+    // Must be registered at background top level, like onScanPortConnected.
+    onScanActionClicked(listener: (tabId: number) => void): void {
+      m.messageDisplayAction.onClicked.addListener(tab => {
+        if (tab.id !== undefined) listener(tab.id);
+      });
+    },
+
     extensionUrl(path: string): string {
       return m.runtime.getURL(path);
     },

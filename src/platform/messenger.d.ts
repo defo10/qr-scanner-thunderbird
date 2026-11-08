@@ -38,7 +38,21 @@ declare namespace messenger {
     }
     const session: StorageArea;
     const local: StorageArea;
+    const onChanged: WebExtEvent<(changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, areaName: string) => void>;
   }
+
+  namespace tabs {
+    interface Tab {
+      id?: number;
+    }
+  }
+
+  namespace messageDisplayAction {
+    function enable(tabId?: number): Promise<void>;
+    function disable(tabId?: number): Promise<void>;
+    const onClicked: WebExtEvent<(tab: tabs.Tab, info?: unknown) => void>;
+  }
+
 
   namespace i18n {
     function getMessage(messageName: string, substitutions?: string | string[]): string;

@@ -31,6 +31,7 @@ export function reduce(s: OverlayState, e: ScanEvent | UiAction): OverlayState {
     case 'scan-finished':
       return { ...s, phase: 'done' };
     case 'idle':
+    case 'manual-available':
       return { ...s, phase: 'idle' };
     case 'minimize':
       return { ...s, minimized: true };

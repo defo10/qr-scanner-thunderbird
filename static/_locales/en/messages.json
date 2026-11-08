@@ -118,5 +118,81 @@
   "errorUnsupportedType": {
     "message": "$1 — file type not supported",
     "description": "Scan error. $1 = source label."
+  },
+  "scanActionTitle": {
+    "message": "Scan for codes",
+    "description": "Toolbar button in the message window that starts a scan when automatic scanning is off."
+  },
+  "optionsTitle": {
+    "message": "QR & Data Matrix Scanner settings",
+    "description": "Title of the settings page."
+  },
+  "optionsAutoScan": {
+    "message": "Scan messages automatically when they are displayed",
+    "description": "Settings checkbox."
+  },
+  "optionsAutoScanHint": {
+    "message": "When off, use the “Scan for codes” button in the message toolbar.",
+    "description": "Hint below the automatic scanning checkbox."
+  },
+  "optionsSources": {
+    "message": "Where to look",
+    "description": "Settings section heading for scan sources."
+  },
+  "sourceImageAttachments": {
+    "message": "Image attachments",
+    "description": "Settings checkbox for scanning image attachments."
+  },
+  "sourceInlineImages": {
+    "message": "Images in the message body",
+    "description": "Settings checkbox for scanning inline images."
+  },
+  "sourcePdfs": {
+    "message": "PDF attachments",
+    "description": "Settings checkbox for scanning PDF attachments."
+  },
+  "optionsFormats": {
+    "message": "Code formats",
+    "description": "Settings section heading for code formats."
+  },
+  "formatsAtLeastOne": {
+    "message": "At least one format must stay enabled.",
+    "description": "Shown when the user tries to disable the last code format."
+  },
+  "optionsLimits": {
+    "message": "Limits",
+    "description": "Settings section heading for size and time limits."
+  },
+  "limitMaxAttachmentMB": {
+    "message": "Largest attachment to scan (MB)",
+    "description": "Settings field label."
+  },
+  "limitMaxImageMegapixels": {
+    "message": "Largest image size (megapixels); larger images are scaled down",
+    "description": "Settings field label."
+  },
+  "limitMaxPdfPages": {
+    "message": "PDF pages to scan",
+    "description": "Settings field label."
+  },
+  "limitPerAttachmentTimeoutSec": {
+    "message": "Time limit per attachment (seconds)",
+    "description": "Settings field label."
+  },
+  "limitOutOfRange": {
+    "message": "Enter a whole number from $1 to $2.",
+    "description": "Inline validation message. $1 = minimum, $2 = maximum."
+  },
+  "optionsSaved": {
+    "message": "Saved",
+    "description": "Shown briefly after a setting was saved."
+  },
+  "optionsSaveFailed": {
+    "message": "Could not save the settings.",
+    "description": "Shown when saving the settings failed."
+  },
+  "optionsReset": {
+    "message": "Reset to defaults",
+    "description": "Button that restores the default settings."
   }
 }

@@ -3,7 +3,9 @@ import type { CodeFormat } from '../../shared/types';
 export const CODE_FORMATS: readonly CodeFormat[] = ['DataMatrix', 'QRCode', 'MicroQRCode', 'rMQRCode', 'Aztec', 'PDF417'];
 
 export interface Settings {
+  readonly autoScan: boolean;
   readonly formats: readonly CodeFormat[];
+  readonly scanImageAttachments: boolean;
   readonly scanInlineImages: boolean;
   readonly scanPdfs: boolean;
   readonly maxAttachmentMB: number;
@@ -11,6 +13,8 @@ export interface Settings {
   readonly maxPdfPages: number;
   readonly perAttachmentTimeoutSec: number;
 }
+
+export type BooleanSetting = 'autoScan' | 'scanImageAttachments' | 'scanInlineImages' | 'scanPdfs';
 
 export type NumericSetting = 'maxAttachmentMB' | 'maxImageMegapixels' | 'maxPdfPages' | 'perAttachmentTimeoutSec';
 
@@ -22,7 +26,9 @@ export const NUMERIC_RANGES: Readonly<Record<NumericSetting, { readonly min: num
 };
 
 export const DEFAULT_SETTINGS: Settings = {
+  autoScan: true,
   formats: CODE_FORMATS,
+  scanImageAttachments: true,
   scanInlineImages: true,
   scanPdfs: true,
   maxAttachmentMB: 10,
@@ -38,10 +44,13 @@ export const DEFAULT_SETTINGS: Settings = {
 export function normalizeSettings(raw: unknown): Settings {
   const r = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
   const formats = Array.isArray(r.formats) ? CODE_FORMATS.filter(f => (r.formats as unknown[]).includes(f)) : [];
+  const flag = (key: BooleanSetting) => (typeof r[key] === 'boolean' ? r[key] : DEFAULT_SETTINGS[key]);
   return {
+    autoScan: flag('autoScan'),
     formats: formats.length > 0 ? formats : DEFAULT_SETTINGS.formats,
-    scanInlineImages: typeof r.scanInlineImages === 'boolean' ? r.scanInlineImages : DEFAULT_SETTINGS.scanInlineImages,
-    scanPdfs: typeof r.scanPdfs === 'boolean' ? r.scanPdfs : DEFAULT_SETTINGS.scanPdfs,
+    scanImageAttachments: flag('scanImageAttachments'),
+    scanInlineImages: flag('scanInlineImages'),
+    scanPdfs: flag('scanPdfs'),
     maxAttachmentMB: clampSetting('maxAttachmentMB', r.maxAttachmentMB),
     maxImageMegapixels: clampSetting('maxImageMegapixels', r.maxImageMegapixels),
     maxPdfPages: clampSetting('maxPdfPages', r.maxPdfPages),

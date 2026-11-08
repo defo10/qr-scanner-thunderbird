@@ -7,4 +7,6 @@ export type ScanEvent =
   | { readonly type: 'source-error'; readonly source: SourceRef; readonly reason: ErrorReason; readonly detail?: Readonly<Record<string, number>> }
   | { readonly type: 'scan-finished' }
   // Nothing to scan: no single displayed message, junk, or no scannable sources.
-  | { readonly type: 'idle' };
+  | { readonly type: 'idle' }
+  // Automatic scanning is off; a scan starts when the user asks for one.
+  | { readonly type: 'manual-available' };

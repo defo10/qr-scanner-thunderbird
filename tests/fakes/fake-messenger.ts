@@ -34,6 +34,7 @@ export interface DisplaySession {
   readonly received: () => ScanEvent[];
   /** The display script goes away: the user moved to another message. */
   readonly disconnect: () => void;
+  readonly tabId: number;
 }
 
 type Listener<A extends unknown[]> = (...args: A) => void;
@@ -110,6 +111,8 @@ export function createFakeMessenger() {
   const onConnect = fakeEvent<[messenger.runtime.Port]>();
   const onNewMailReceived = fakeEvent<[unknown, unknown]>();
   const session = new Map<string, unknown>();
+  const onScanActionClicked = fakeEvent<[messenger.tabs.Tab, unknown]>();
+  let scanActionEnabled = true;
   let nextMessageId = 1;
   let nextTabId = 1;
 
@@ -125,7 +128,13 @@ export function createFakeMessenger() {
       connect: () => { throw new Error('the fake has no display-side runtime.connect'); },
       getURL: path => `moz-extension://fake/${path}`,
     },
+    messageDisplayAction: {
+      enable: () => { scanActionEnabled = true; return Promise.resolve(); },
+      disable: () => { scanActionEnabled = false; return Promise.resolve(); },
+      onClicked: onScanActionClicked.api,
+    },
     storage: {
+      onChanged: fakeEvent<[Record<string, { oldValue?: unknown; newValue?: unknown }>, string]>().api,
       local: {
         get: () => Promise.resolve({}),
         set: () => Promise.resolve(),
@@ -205,6 +214,7 @@ export function createFakeMessenger() {
       events,
       received: () => [...received],
       disconnect: () => { if (backgroundPort) disconnect.fire(backgroundPort); },
+      tabId,
     };
   }
 
@@ -212,6 +222,8 @@ export function createFakeMessenger() {
     messenger: messengerApi,
     attachmentDownloads: () => [...attachmentDownloads],
     sessionStorageKeys: () => [...session.keys()],
+    isScanActionEnabled: () => scanActionEnabled,
+    clickScanAction: (tabId: number) => onScanActionClicked.fire({ id: tabId }, undefined),
     newMailListenerCount: () => onNewMailReceived.listeners.length,
 
     /** Stores the message and returns its id. */

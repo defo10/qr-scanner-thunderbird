@@ -61,12 +61,22 @@ export function aRunningScanService(options: { settings?: ScanSettings; hangOnJo
   const worker = createWorkerClient({ spawn: workers.spawn, loadWasm });
   // happy-dom's types differ slightly from lib.dom's, the behavior does not.
   const htmlParser = new new Window().DOMParser() as unknown as DOMParser;
-  startScanService({ tb: createTbApi(mail.messenger), worker, htmlParser, settings: () => Promise.resolve(settings) });
+  const settingsListeners: (() => void)[] = [];
+  startScanService({
+    tb: createTbApi(mail.messenger),
+    worker,
+    htmlParser,
+    settings: () => Promise.resolve(settings),
+    onSettingsChanged: listener => settingsListeners.push(listener),
+  });
   return {
     mail,
     workers,
     wasmLoads: () => wasmLoads,
-    changeSettings: (next: ScanSettings) => { settings = next; },
+    changeSettings: (next: ScanSettings) => {
+      settings = next;
+      settingsListeners.forEach(l => l());
+    },
   };
 }
 

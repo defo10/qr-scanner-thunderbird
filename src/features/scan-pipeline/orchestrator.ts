@@ -38,7 +38,8 @@ export async function runScan(ctx: ScanContext, emitEvent: Emit): Promise<void> 
   const message = await ctx.tb.getDisplayedMessage(ctx.tabId);
   if (!message || message.junk || message.inJunkFolder) return emit({ type: 'idle' });
 
-  const cached = await ctx.cache.read(message.id, ctx.settings);
+  const resultSettings = withoutAutoScan(ctx.settings);
+  const cached = await ctx.cache.read(message.id, resultSettings);
   if (cached) {
     emit({ type: 'scan-started', sourceCount: cached.sourceCount });
     cached.events.forEach(emit);
@@ -61,7 +62,12 @@ export async function runScan(ctx: ScanContext, emitEvent: Emit): Promise<void> 
   }
   if (ctx.signal.aborted) return;
   emit({ type: 'scan-finished' });
-  await ctx.cache.write(message.id, ctx.settings, { sourceCount: sources.length, events: results });
+  await ctx.cache.write(message.id, resultSettings, { sourceCount: sources.length, events: results });
+}
+
+// Whether a scan starts by itself does not change what it finds.
+function withoutAutoScan({ autoScan, ...rest }: ScanSettings): Omit<ScanSettings, 'autoScan'> {
+  return rest;
 }
 
 // Inline discovery is best effort: a message whose structure or body cannot be
