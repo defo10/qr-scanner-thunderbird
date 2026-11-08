@@ -97,13 +97,14 @@ export function codesFrom(attachmentName: string, ...codes: DecodedCode[]): Scan
 }
 
 /** An overlay in a fresh DOM document with a recording clipboard. Needs a DOM test environment. */
-export function anOverlay(options: { clipboardFails?: boolean } = {}) {
+export function anOverlay(options: { clipboardFails?: boolean; clipboardThrows?: boolean } = {}) {
   const doc = document.implementation.createHTMLDocument('message');
   const clipboard: string[] = [];
   const overlay = mountOverlay({
     document: doc,
     t: englishTranslate,
     copy: text => {
+      if (options.clipboardThrows) throw new TypeError('navigator.clipboard is undefined');
       if (options.clipboardFails) return Promise.reject(new Error('denied'));
       clipboard.push(text);
       return Promise.resolve();

@@ -18,7 +18,7 @@ export function copyButton(
   let reset: ReturnType<typeof setTimeout> | undefined;
   button.addEventListener('click', () => {
     clearTimeout(reset);
-    copy(text).then(
+    attempt(() => copy(text)).then(
       () => { button.textContent = t('copied'); },
       () => { button.textContent = t('copyFailed'); },
     ).finally(() => {
@@ -26,4 +26,13 @@ export function copyButton(
     });
   });
   return button;
+}
+
+// Turns a synchronous throw into a rejection, so every failure shows feedback.
+function attempt(write: () => Promise<void>): Promise<void> {
+  try {
+    return write();
+  } catch (e) {
+    return Promise.reject(e instanceof Error ? e : new Error(String(e)));
+  }
 }

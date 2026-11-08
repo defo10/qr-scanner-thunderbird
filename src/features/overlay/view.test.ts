@@ -163,4 +163,14 @@ describe('overlay panel', () => {
       'label.pdf — timed out after 30 s',
     ]);
   });
+
+  it('shows a failure on the button when the clipboard throws right away', async () => {
+    const overlay = anOverlay({ clipboardThrows: true });
+    overlay.send(codesFrom('label.png', aDecodedCode()));
+
+    overlay.click('.copy');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(overlay.root()?.querySelector('.copy')?.textContent).toBe('Copy failed');
+  });
 });
