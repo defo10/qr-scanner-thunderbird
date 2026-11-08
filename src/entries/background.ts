@@ -1,5 +1,5 @@
-import { ALL_CODE_FORMATS } from '../features/decode';
 import { createWorkerClient, startScanService } from '../features/scan-pipeline';
+import { loadSettings } from '../features/settings';
 import { defaultTbApi } from '../platform/tb-api';
 import { compileWasm, spawnScannerWorker } from '../platform/worker-host';
 
@@ -13,6 +13,6 @@ startScanService({
   tb,
   worker,
   htmlParser: new DOMParser(),
-  settings: () => ({ formats: ALL_CODE_FORMATS, scanInlineImages: true }),
+  settings: () => loadSettings(tb.localStore),
 });
 void tb.registerDisplayScript({ js: ['display.js'] });

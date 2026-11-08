@@ -13,8 +13,8 @@ A Thunderbird extension that scans the displayed email automatically for 2D code
 | Message access | **Thunderbird APIs**: `messages.listAttachments`, `messages.getAttachmentFile`, `messages.getFull` |
 | Sources | Image attachments, inline body images (`cid:` parts and `data:` URIs), PDF attachments. Remote `http(s)` images are **never** fetched |
 | Runtime split | Background does the orchestration; a dedicated **Web Worker** does all CPU work (rasterizing, WASM decoding) |
-| PDF strategy | **Candidate-gated multi-pass**: render each page at about 150 DPI. Re-render at about 300 DPI **only** if zxing located a code-like symbol on that page but couldn't decode it. Pages with no code cost a single pass |
-| Photo strategy | **Low-resolution first pass**: images above 4 MP are searched at 4 MP first. Full resolution (up to the megapixel cap) is used only if that pass found an undecodable candidate |
+| PDF strategy | **Single pass per page at about 200 DPI**, no escalation (decided in chunk 9: zxing rarely reports a "candidate" for codes too small to decode, so candidate-gated escalation would miss them; dense text pages also produce false QR candidates) |
+| Photo strategy | **Single pass at native resolution**, capped at the megapixel limit (decided in chunk 9: a low-resolution first pass gated on candidates silently misses small codes; one full pass is also cheaper than a low-res pass plus fallback for code-free photos) |
 | Worker warm-up | WASM is **compiled once** in the background and the compiled `WebAssembly.Module` is passed to each new worker. A worker is terminated only when a job is actually running, never just because the user moved to another message |
 | Performance verification | A **benchmark script** (chunks 2 and 10) measures code-free and code-bearing fixtures, and its numbers are used to tune these defaults |
 | Trigger | **Scan only when a message is displayed** (preview pane, tab or window). **Never** on mail arrival, never in the background, never for messages that are not on screen. Junk is skipped. Auto-scan can be switched off in settings; a toolbar button then triggers the scan |
@@ -73,7 +73,7 @@ The rules:
 - **Scanning happens only on display (performance).** The extension registers **no** `messages.onNewMailReceived` listener, does no folder or background pre-scanning, and does no prefetching of neighbouring messages. A scan exists only while a message is on screen and its display script holds a port.
 - **One worker, sequential jobs.** Cancellation and timeouts **terminate** the worker **only if a job is running**, because terminating is the only reliable way to stop a WASM call mid-flight. An idle worker survives message switches. The next job spawns a fresh worker lazily. The worker is also terminated after 60 s idle to free memory.
 - **The WASM is compiled once per background lifetime.** The background compiles `zxing_reader.wasm` with `WebAssembly.compile` and sends the `WebAssembly.Module` (structured-cloneable) to each new worker. The worker instantiates it through the Emscripten `instantiateWasm` override, so a respawn costs instantiation only, not compilation.
-- **The code-free case must be cheap.** Most attachments contain no code, and a code-free search is zxing's slowest path, because every retry option is exhausted. The design therefore does expensive work (high-resolution re-renders, full-resolution photo passes) only when a cheap pass found a **candidate**: a symbol zxing located but couldn't decode (`returnErrors: true`).
+- **The code-free case must be cheap.** Most attachments contain no code, and a code-free search is zxing's slowest path. Each source therefore gets exactly one decode pass (native resolution for images, about 200 DPI for PDF pages); the benchmark keeps these costs visible.
 - **Decoded content never reaches `innerHTML`.** The overlay renders with `textContent` only.
 - **No network.** No remote fetches anywhere. pdf.js gets local `cMapUrl` and `standardFontDataUrl`, and `isEvalSupported: false`.
 
@@ -432,7 +432,7 @@ Constraints / changes:
   `loadSettings()` reads `storage.local` and merges it with the defaults.
 - **Size:** attachments whose `size` exceeds the limit are skipped **before download** and reported with `source-error(too-large, { sizeMB, limitMB })`. Data URIs are checked after Base64 decode.
 - **Megapixels:** images above the limit are **downscaled** to the limit (aspect ratio kept) before decoding. This is not an error, but it is logged.
-- **Low-resolution first pass for photos** (`image-scan/raster-image.ts`): images above **4 MP** (constant `FIRST_PASS_MP`, tuned by the benchmark, not user-facing) are first decoded downscaled to 4 MP. If that pass returns codes, they are used. If it returns **0 codes and ≥1 candidate**, the image is decoded again at full resolution (capped by `maxImageMegapixels`). If it returns 0 codes and 0 candidates, the image is done. Images at or below 4 MP get a single pass at native resolution.
+- **Single pass for images:** every image is decoded once at native resolution, downscaled only to `maxImageMegapixels`. (Originally a 4 MP first pass with candidate-gated escalation; dropped because zxing almost never reports a candidate for a code that is too small at reduced resolution.)
 - **Timeout:** each source runs under a timer. On expiry the worker is terminated, `source-error(timeout)` is emitted, and the next source continues on a fresh worker.
 - **Unreadable:** decode or parse failures, and parts the TB API returns as encrypted or unreadable (best-effort encryption support), are reported as `source-error(unreadable)`.
 - **Overlay:** errors appear below the codes as a muted, compact list, e.g. "big-scan.pdf — skipped (14 MB > 10 MB limit)" or "label.pdf — timed out after 30 s". If there are only errors and no codes, the panel still shows (the user should know something wasn't scanned).
@@ -444,22 +444,22 @@ Tests:
 - A 12 MB attachment with the default settings is never downloaded (spy) and is reported as too large. With `maxAttachmentMB: 20` it is scanned.
 - An attachment that hangs the fake worker reports a timeout, and the following attachment's codes still arrive.
 - A 60 MP image fixture (generated) with a DM still decodes after downscaling to 40 MP.
-- A code-free 12 MP photo fixture is decoded exactly once, at 4 MP (spy on `decodePixels` calls and the dimensions they receive).
-- A 12 MP fixture whose DM is too small to decode at 4 MP is decoded at full resolution on the second pass.
+- A code-free 12 MP image is decoded exactly once, at native resolution (spy on `decodePixels` calls and the dimensions they receive).
+- A 12 MP image whose DM is too small to decode at 4 MP is decoded.
 - An errors-only result still shows the panel, with the error line text.
 - Out-of-range stored settings are clamped (e.g. `maxAttachmentMB: 0` becomes 1).
 
 ---
 
-### Chunk 10 — PDF attachments (candidate-gated multi-pass)
+### Chunk 10 — PDF attachments (single 200 DPI pass)
 
 **Why:** Data Matrix codes very often appear in PDFs (labels, prescriptions, invoices), and are frequently drawn as vectors.
 
 Constraints / changes:
 - PDFs are planned by `application/pdf` or a `.pdf` extension. The `scanPdfs` source toggle defaults to on.
 - `pdf-scan/raster-pdf.ts` runs in the worker. It uses **pdfjs-dist** (exact version pinned) inside our dedicated worker, either with its own worker as a nested module worker or via `workerPort`; pick whichever works in TB 128 and document it. Options: `isEvalSupported: false`, local `cMapUrl`/`standardFontDataUrl` (copied into `dist/pdfjs/` by the build), and no network.
-- **Candidate-gated per page:** render at a scale equivalent to **150 DPI** and decode. Re-render at **300 DPI** and decode again **only if** that pass yields **0 codes and ≥1 candidate** (a symbol zxing located but couldn't decode). A page with no code costs exactly one 150 DPI pass. The pixel cap `maxImageMegapixels` applies to each render, and DPI is lowered to fit.
-- **Fallback, if the chunk 2 verification shows that too-small Data Matrix codes produce no candidate at 150 DPI:** use a single pass per page at about **200 DPI** with no escalation. The benchmark decides between the two, and the choice is recorded in the PR.
+- **One pass per page:** render at a scale equivalent to **200 DPI** and decode. The pixel cap `maxImageMegapixels` applies to each render, and DPI is lowered to fit.
+- (Originally candidate-gated 150 → 300 DPI; replaced by the single pass in chunk 9, see the decisions table.)
 - `scripts/bench.ts` is extended with PDF fixtures: a code-free 10-page text invoice, the 3-page mixed PDF and the small-DM PDF. It reports time per page and the peak canvas size.
 - Codes stream **per page**: the worker posts `codes { page }` after each page, the background forwards them, and the source label shows `file.pdf · p.N`.
 - Only the first `maxPdfPages` pages are scanned. If the document has more, the result also includes `source-error(page-limit, { scanned, total })`, shown as "only first 20 of 57 pages scanned".
@@ -472,21 +472,19 @@ Gist:
 ```ts
 for (let p = 1; p <= Math.min(doc.numPages, limits.maxPdfPages); p++) {
   signal.throwIfAborted();
-  let r = await decodePixels(await renderPage(doc, p, dpiFor(150, limits)), opts);
-  if (r.codes.length === 0 && r.candidates > 0)
-    r = await decodePixels(await renderPage(doc, p, dpiFor(300, limits)), opts);
+  const r = await decodePixels(await renderPage(doc, p, dpiFor(200, limits)), opts);
   post({ type: 'codes', page: p, codes: r.codes });
 }
 ```
 
 Files: `src/features/pdf-scan/{raster-pdf.ts,render-target.ts,raster-pdf.test.ts}`, `src/entries/scanner-worker.ts`, `src/features/scan-pipeline/plan-sources.ts`, `src/shared/worker-protocol.ts`, `scripts/build.ts`, `scripts/gen-fixtures.ts`, `tests/fixtures/pdf/*`, `package.json` (pdfjs-dist, dev: pdf-lib).
 
-Fixtures (generated with pdf-lib): a vector DM (bwip-js SVG path drawn with `drawSvgPath`), a raster DM (embedded PNG), a small DM that is only readable at 300 DPI, a 3-page PDF with codes on pages 1 and 3, a 25-page PDF, an encrypted PDF and a truncated PDF.
+Fixtures (generated with pdf-lib): a vector DM (bwip-js SVG path drawn with `drawSvgPath`), a raster DM (embedded PNG), a small DM that is only readable at about 200 DPI, a 3-page PDF with codes on pages 1 and 3, a 25-page PDF, an encrypted PDF and a truncated PDF.
 
 Tests:
 - A vector DM in a PDF is decoded, and its source is labeled with the page number.
-- The small DM is found at the 300 DPI pass. A spy on render calls shows the 150 → 300 escalation happens only on pages with a candidate.
-- The code-free 10-page invoice is rendered exactly 10 times, all at 150 DPI.
+- The small DM is found at the 200 DPI pass.
+- The code-free 10-page invoice is rendered exactly 10 times, all at 200 DPI.
 - In the 25-page PDF with default settings, only 20 pages are rendered and a page-limit note is emitted.
 - The encrypted PDF reports `encrypted-pdf`, and the truncated one reports `unreadable`. Neither throws out of the scan.
 
@@ -577,7 +575,7 @@ These are decisions made by default that need confirming against TB 128:
 1. Message display script registration API in MV3 (`scripting.messageDisplay` vs `messageDisplayScripts`), and the exact permission name. (Chunk 1)
 2. Whether `messages.getAttachmentFile` accepts inline (non-attachment) part names. (Chunk 7)
 3. How pdf.js's own worker can run nested inside our dedicated worker under the extension CSP. (Chunk 10)
-4. Whether zxing-wasm with `returnErrors: true` reports a positioned candidate for Data Matrix codes that are too small or blurry to decode, and reports **none** on code-free photos and pages. This decides between candidate gating and the single 200 DPI fallback. (Chunks 2 and 10, settled by the benchmark)
-5. Whether a `WebAssembly.Module` can be posted to a dedicated worker under the extension CSP in TB 128. If not, each new worker compiles the WASM itself, which costs a little more after each cancel. (Chunk 8)
+4. Whether zxing-wasm with `returnErrors: true` reports a positioned candidate for Data Matrix codes that are too small or blurry to decode, and reports **none** on code-free photos and pages. This decides between candidate gating and the single 200 DPI fallback. (Chunks 2 and 10, settled by the benchmark) **Resolved in chunk 9: it mostly does not; candidate gating was dropped.**
+5. Whether a `WebAssembly.Module` can be posted to a dedicated worker under the extension CSP in TB 128. If not, each new worker compiles the WASM itself, which costs a little more after each cancel. (Chunk 8) **Resolved: it can (confirmed in TB after chunk 4).**
 6. What the TB APIs return for OpenPGP and S/MIME messages (decrypted parts, or not). This only affects the error messages, since support is best effort.
 7. The gecko extension `id` (e.g. `qr-scanner@<your-domain>`), which is needed before the first ATN upload.

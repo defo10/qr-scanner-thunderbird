@@ -76,8 +76,26 @@ export function createOverlayView(deps: OverlayViewDeps): OverlayView {
     return li;
   };
 
-  const errorLine = (e: SourceError): HTMLElement =>
-    el('li', 'error', e.reason === 'unreadable' ? t('errorUnreadable', sourceLabel(e.source)) : t('errorGeneric', sourceLabel(e.source)));
+  const errorText = (e: SourceError): string => {
+    const label = sourceLabel(e.source);
+    const d = e.detail ?? {};
+    switch (e.reason) {
+      case 'too-large':
+        return d.sizeMB !== undefined && d.limitMB !== undefined ? t('errorTooLarge', label, d.sizeMB, d.limitMB) : t('errorGeneric', label);
+      case 'timeout':
+        return d.seconds !== undefined ? t('errorTimeout', label, d.seconds) : t('errorGeneric', label);
+      case 'page-limit':
+        return d.scanned !== undefined && d.total !== undefined ? t('errorPageLimit', label, d.scanned, d.total) : t('errorGeneric', label);
+      case 'encrypted-pdf':
+        return t('errorEncryptedPdf', label);
+      case 'unsupported-type':
+        return t('errorUnsupportedType', label);
+      case 'unreadable':
+        return t('errorUnreadable', label);
+    }
+  };
+
+  const errorLine = (e: SourceError): HTMLElement => el('li', 'error', errorText(e));
 
   const countLabel = (n: number) => (n === 1 ? t('codesCountOne') : t('codesCountOther', n));
 

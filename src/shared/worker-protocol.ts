@@ -9,6 +9,8 @@ export type ImageJob = {
   readonly bytes: ArrayBuffer;
   readonly mime: string;
   readonly decode: JobDecodeOptions;
+  /** Larger images are downscaled to this size before decoding. */
+  readonly maxMegapixels: number;
 };
 
 export type WorkerRequest =

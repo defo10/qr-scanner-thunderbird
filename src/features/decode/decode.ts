@@ -12,15 +12,7 @@ export interface DecodeOptions {
   readonly formats: readonly CodeFormat[];
 }
 
-export interface DecodeResult {
-  readonly codes: DecodedCode[];
-  // Symbols the detector located but could not decode (e.g. checksum errors).
-  // Symbols too blurry or too small to be located at all are not counted, so
-  // zero candidates does not prove the absence of a code.
-  readonly candidates: number;
-}
-
-export type DecodePixels = (img: Pixels, opts: DecodeOptions) => Promise<DecodeResult>;
+export type DecodePixels = (img: Pixels, opts: DecodeOptions) => Promise<DecodedCode[]>;
 
 // - zxing-wasm keeps one module per realm; preparing it here replaces its
 //   default loader, which would fetch the .wasm from a public CDN.
@@ -39,13 +31,11 @@ export async function loadDecoder(wasm: WebAssembly.Module): Promise<DecodePixel
   return decodePixels;
 }
 
-async function decodePixels(img: Pixels, opts: DecodeOptions): Promise<DecodeResult> {
+async function decodePixels(img: Pixels, opts: DecodeOptions): Promise<DecodedCode[]> {
   // An empty format list means "all formats" to zxing.
-  if (opts.formats.length === 0) return { codes: [], candidates: 0 };
+  if (opts.formats.length === 0) return [];
   const results = await readBarcodes(img as ImageData, toZxingOptions(opts.formats));
-  const codes = results.filter(r => r.isValid).map(toDecodedCode).filter(c => c !== null);
-  const candidates = results.filter(r => !r.isValid && hasPosition(r)).length;
-  return { codes, candidates };
+  return results.filter(r => r.isValid).map(toDecodedCode).filter(c => c !== null);
 }
 
 function toDecodedCode(r: ReadResult): DecodedCode | null {
@@ -58,10 +48,6 @@ function toDecodedCode(r: ReadResult): DecodedCode | null {
     contentKind: r.contentType,
     symbologyId: r.symbologyIdentifier,
   };
-}
-
-function hasPosition({ position: p }: ReadResult): boolean {
-  return [p.topLeft, p.topRight, p.bottomLeft, p.bottomRight].some(pt => pt.x !== 0 || pt.y !== 0);
 }
 
 function toBase64(bytes: Uint8Array): string {

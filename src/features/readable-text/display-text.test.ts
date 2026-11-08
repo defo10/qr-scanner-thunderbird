@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aDecodedCode } from '../../../tests/helpers/builders';
 import { imageFixture, nodeDecoder } from '../../../tests/helpers/load-fixture';
-import { ALL_CODE_FORMATS } from '../decode';
+import { CODE_FORMATS as ALL_CODE_FORMATS } from '../settings';
 import { toDisplay } from './display-text';
 
 describe('toDisplay', () => {
@@ -32,7 +32,7 @@ describe('toDisplay', () => {
 
   it('displays and copies the binary fixture as the same Base64 string', async () => {
     const decode = await nodeDecoder();
-    const { codes: [binary] } = await decode(await imageFixture('datamatrix-binary.png'), { formats: ALL_CODE_FORMATS });
+    const [binary] = await decode(await imageFixture('datamatrix-binary.png'), { formats: ALL_CODE_FORMATS });
 
     const display = toDisplay(binary!);
 

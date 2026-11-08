@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { Canvas } from '@napi-rs/canvas';
 import {
-  blankCanvas, codeFreeScene, damaged, inverted, photoLike, placeAt, renderSymbol, rotated, withQuietZone,
+  blankCanvas, codeFreeScene, inverted, photoLike, placeAt, renderSymbol, rotated, withQuietZone,
 } from './lib/fixture-art';
 
 const OUT = 'tests/fixtures/images';
@@ -28,7 +28,6 @@ const fixtures: Record<string, () => Promise<Canvas>> = {
   'datamatrix-binary': async () => withQuietZone(
     await renderSymbol({ bcid: 'datamatrix', text: '^000^001^255^128^200abc', parse: true }), 20),
   'datamatrix-photo': async () => photoLike(await dm('PHOTO-LABEL-0815', 5), 42),
-  'datamatrix-damaged': async () => damaged(await dm('DAMAGED-CODE-1234567890'), 4, 0.3, 7),
   'qr-url': async () => withQuietZone(await renderSymbol({ bcid: 'qrcode', text: 'https://evil.example/login?next=%2F' }), 20),
   'microqr': async () => withQuietZone(await renderSymbol({ bcid: 'microqrcode', text: '12345' }), 20),
   'rmqr': async () => withQuietZone(await renderSymbol({ bcid: 'rectangularmicroqrcode', text: 'RMQR-42', version: 'R11x43' }), 20),

@@ -1,8 +1,6 @@
 import type { ReaderOptions, ReadInputBarcodeFormat, ReadResult } from 'zxing-wasm/reader';
 import type { CodeFormat } from '../../shared/types';
 
-export const ALL_CODE_FORMATS: readonly CodeFormat[] = ['DataMatrix', 'QRCode', 'MicroQRCode', 'rMQRCode', 'Aztec', 'PDF417'];
-
 // zxing's symbology-wide "QRCode" also matches Micro QR and rMQR, so the QR
 // toggle maps to the two model variants only.
 const ZXING_FORMATS: Record<CodeFormat, ReadInputBarcodeFormat[]> = {
@@ -14,10 +12,8 @@ const ZXING_FORMATS: Record<CodeFormat, ReadInputBarcodeFormat[]> = {
   PDF417: ['PDF417'],
 };
 
-// - returnErrors makes zxing also report symbols it located but could not
-//   decode; callers use their count to decide whether a costlier pass is worth it.
-// - Plain text mode keeps control characters (GS1 separator \x1D, ISO 15434
-//   record separators) in `text`.
+// Plain text mode keeps control characters (GS1 separator \x1D, ISO 15434
+// record separators) in `text`.
 export function toZxingOptions(formats: readonly CodeFormat[]): ReaderOptions {
   return {
     formats: formats.flatMap(f => ZXING_FORMATS[f]),
@@ -27,7 +23,6 @@ export function toZxingOptions(formats: readonly CodeFormat[]): ReaderOptions {
     tryDownscale: true,
     maxNumberOfSymbols: 255,
     textMode: 'Plain',
-    returnErrors: true,
   };
 }
 

@@ -1,15 +1,13 @@
 import { findDataUriImages, findInlineImageParts, type DataUriImage, type InlineImagePart } from '../inline-images';
+import type { Settings } from '../settings';
 import type { TbApi } from '../../platform/tb-api';
 import type { ScanEvent } from '../../shared/port-protocol';
-import type { CodeFormat } from '../../shared/types';
+import { sizeLimitExceeded } from './limits';
 import { planSources, type PlannedSource } from './plan-sources';
 import type { ResultEvent, ScanCache } from './session-cache';
 import type { WorkerClient } from './worker-client';
 
-export interface ScanSettings {
-  readonly formats: readonly CodeFormat[];
-  readonly scanInlineImages: boolean;
-}
+export type ScanSettings = Settings;
 
 export type ScanTb = Pick<
   TbApi,
@@ -88,16 +86,21 @@ async function readBytes(ctx: ScanContext, messageId: number, source: PlannedSou
 }
 
 async function scanSource(ctx: ScanContext, messageId: number, source: PlannedSource, emit: (e: ResultEvent) => void): Promise<void> {
+  const tooLarge = sizeLimitExceeded(source.size, ctx.settings);
+  if (tooLarge) return emit({ type: 'source-error', source: source.ref, reason: 'too-large', detail: tooLarge });
   let bytes: ArrayBuffer;
   try {
     bytes = await readBytes(ctx, messageId, source);
   } catch {
     return emit({ type: 'source-error', source: source.ref, reason: 'unreadable' });
   }
+  const { formats, maxImageMegapixels, perAttachmentTimeoutSec } = ctx.settings;
   const outcome = await ctx.worker.run(
-    { kind: 'image', bytes, mime: source.mime, decode: { formats: ctx.settings.formats } },
+    { kind: 'image', bytes, mime: source.mime, decode: { formats }, maxMegapixels: maxImageMegapixels },
     codes => { if (codes.length > 0) emit({ type: 'codes', source: source.ref, codes }); },
-    ctx.signal,
+    { signal: ctx.signal, timeoutMs: perAttachmentTimeoutSec * 1000 },
   ).catch(() => ({ status: 'error', reason: 'unreadable' }) as const);
-  if (outcome.status === 'error') emit({ type: 'source-error', source: source.ref, reason: outcome.reason });
+  if (outcome.status !== 'error') return;
+  const detail = outcome.reason === 'timeout' ? { seconds: perAttachmentTimeoutSec } : undefined;
+  emit({ type: 'source-error', source: source.ref, reason: outcome.reason, ...(detail ? { detail } : {}) });
 }

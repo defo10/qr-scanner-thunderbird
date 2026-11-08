@@ -1,9 +1,9 @@
-import { ALL_CODE_FORMATS } from '../../src/features/decode';
 import { mountOverlay } from '../../src/features/overlay';
 import type { ScanEvent } from '../../src/shared/port-protocol';
 import type { DecodedCode } from '../../src/shared/types';
 import { englishTranslate } from './i18n';
 import { createWorkerClient, startScanService, type ScanSettings } from '../../src/features/scan-pipeline';
+import { DEFAULT_SETTINGS } from '../../src/features/settings';
 import { createTbApi } from '../../src/platform/tb-api';
 import { Window } from 'happy-dom';
 import { createFakeMessenger, type FakeAttachment, type FakeInlineImage, type FakeMessage } from '../fakes/fake-messenger';
@@ -31,6 +31,11 @@ export function anImageAttachment(name: string, bytes: Uint8Array, contentType =
   return { name, contentType, bytes };
 }
 
+/** An attachment Thunderbird reports with the given size, whatever its actual bytes. */
+export function reportedAsMegabytes(attachment: FakeAttachment, megabytes: number): FakeAttachment {
+  return { ...attachment, reportedSize: megabytes * 1024 * 1024 };
+}
+
 export function aFileAttachment(name: string, contentType: string, bytes = new TextEncoder().encode('not an image')): FakeAttachment {
   return { name, contentType, bytes };
 }
@@ -45,7 +50,7 @@ export function corruptPng(): Uint8Array {
 }
 
 /** A background scan service wired to a fake messenger and an in-process worker. */
-export const defaultScanSettings: ScanSettings = { formats: ALL_CODE_FORMATS, scanInlineImages: true };
+export const defaultScanSettings: ScanSettings = DEFAULT_SETTINGS;
 
 export function aRunningScanService(options: { settings?: ScanSettings; hangOnJob?: number } = {}) {
   let settings = options.settings ?? defaultScanSettings;
@@ -56,7 +61,7 @@ export function aRunningScanService(options: { settings?: ScanSettings; hangOnJo
   const worker = createWorkerClient({ spawn: workers.spawn, loadWasm });
   // happy-dom's types differ slightly from lib.dom's, the behavior does not.
   const htmlParser = new new Window().DOMParser() as unknown as DOMParser;
-  startScanService({ tb: createTbApi(mail.messenger), worker, htmlParser, settings: () => settings });
+  startScanService({ tb: createTbApi(mail.messenger), worker, htmlParser, settings: () => Promise.resolve(settings) });
   return {
     mail,
     workers,

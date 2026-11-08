@@ -79,6 +79,11 @@ export function createTbApi(m: Messenger) {
       return m.i18n.getMessage(key, substitutions);
     },
 
+    localStore: {
+      get: async (key: string): Promise<unknown> => (await m.storage.local.get(key))[key],
+      set: (key: string, value: unknown): Promise<void> => m.storage.local.set({ [key]: value }),
+    },
+
     sessionStore: {
       get: async (key: string): Promise<unknown> => (await m.storage.session.get(key))[key],
       set: (key: string, value: unknown): Promise<void> => m.storage.session.set({ [key]: value }),

@@ -54,21 +54,6 @@ export function inverted(symbol: Canvas): Canvas {
   return c;
 }
 
-export function damaged(symbol: Canvas, moduleSize: number, fraction: number, seed: number): Canvas {
-  const c = withQuietZone(symbol, 20);
-  const g = c.getContext('2d');
-  const rnd = seededRandom(seed);
-  const modules = symbol.width / moduleSize;
-  const flips = Math.round(fraction * modules * modules);
-  for (let i = 0; i < flips; i++) {
-    g.fillStyle = rnd() < 0.5 ? '#000' : '#fff';
-    const mx = 1 + Math.floor(rnd() * (modules - 2));
-    const my = 1 + Math.floor(rnd() * (modules - 2));
-    g.fillRect(20 + mx * moduleSize, 20 + my * moduleSize, moduleSize, moduleSize);
-  }
-  return c;
-}
-
 // Trapezoid perspective (drawn in vertical strips), blur, uneven lighting and
 // sensor noise: a cheap stand-in for a phone photo of a label.
 export function photoLike(symbol: Canvas, seed: number): Canvas {

@@ -9,8 +9,13 @@ export type JobOutcome =
 
 export type OnCodes = (codes: readonly DecodedCode[], page?: number) => void;
 
+export interface RunOptions {
+  readonly signal: AbortSignal;
+  readonly timeoutMs: number;
+}
+
 export interface WorkerClient {
-  run(job: ImageJob, onCodes: OnCodes, signal: AbortSignal): Promise<JobOutcome>;
+  run(job: ImageJob, onCodes: OnCodes, options: RunOptions): Promise<JobOutcome>;
 }
 
 export interface WorkerClientDeps {
@@ -28,10 +33,12 @@ interface ActiveJob {
 const DEFAULT_IDLE_TIMEOUT_MS = 60_000;
 
 // - One worker runs one job at a time; concurrent callers are queued.
-// - Terminating is the only way to stop a running WASM call, so an abort
-//   terminates the worker, but only while one of its jobs is in flight; an
-//   idle worker is kept for the next job. An idle worker is released after
-//   idleTimeoutMs to free its memory.
+// - Terminating is the only way to stop a running WASM call, so an abort or a
+//   timeout terminates the worker, but only while one of its jobs is in
+//   flight; an idle worker is kept for the next job. An idle worker is
+//   released after idleTimeoutMs to free its memory.
+// - The timeout starts when the job reaches the worker, not while it waits in
+//   the queue.
 // - Workers are spawned lazily and replaced after termination or a crash.
 //   The WASM module is compiled once and handed to every new worker, so a
 //   respawn only pays for instantiation.
@@ -73,21 +80,25 @@ export function createWorkerClient(deps: WorkerClientDeps): WorkerClient {
     return spawned;
   };
 
-  const runNow = async (job: ImageJob, onCodes: OnCodes, signal: AbortSignal): Promise<JobOutcome> => {
+  const runNow = async (job: ImageJob, onCodes: OnCodes, { signal, timeoutMs }: RunOptions): Promise<JobOutcome> => {
     if (signal.aborted) return { status: 'aborted' };
     clearTimeout(idleTimer);
     const w = await ensureWorker();
     const id = nextJobId++;
-    const onAbort = () => {
+    const stop = (outcome: JobOutcome) => {
       if (active?.id !== id) return;
       discardWorker();
-      active.finish({ status: 'aborted' });
+      active.finish(outcome);
     };
+    const onAbort = () => stop({ status: 'aborted' });
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const outcome = await new Promise<JobOutcome>(finish => {
       active = { id, onCodes, finish };
       signal.addEventListener('abort', onAbort, { once: true });
+      timer = setTimeout(() => stop({ status: 'error', reason: 'timeout' }), timeoutMs);
       w.post({ type: 'scan', jobId: id, ...job }, [job.bytes]);
     });
+    clearTimeout(timer);
     signal.removeEventListener('abort', onAbort);
     active = undefined;
     idleTimer = setTimeout(discardWorker, idleTimeoutMs);
@@ -95,8 +106,8 @@ export function createWorkerClient(deps: WorkerClientDeps): WorkerClient {
   };
 
   return {
-    run(job, onCodes, signal) {
-      const result = queue.then(() => runNow(job, onCodes, signal));
+    run(job, onCodes, options) {
+      const result = queue.then(() => runNow(job, onCodes, options));
       queue = result.catch(() => undefined);
       return result;
     },

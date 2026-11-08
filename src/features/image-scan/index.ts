@@ -1,2 +1,2 @@
 export { scannableImageMime } from './image-types';
-export { rasterImageInBrowser, scanImage, type RasterImage } from './raster-image';
+export { fitWithin, rasterImageInBrowser, scanImage, type RasterImage } from './raster-image';

@@ -37,6 +37,7 @@ declare namespace messenger {
       remove(keys: string | string[]): Promise<void>;
     }
     const session: StorageArea;
+    const local: StorageArea;
   }
 
   namespace i18n {

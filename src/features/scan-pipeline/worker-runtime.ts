@@ -18,7 +18,12 @@ export function createWorkerRuntime(deps: { rasterImage: RasterImage }, post: Po
     if (!decoder) throw new Error('scan job received before init');
     const decode = await decoder;
     try {
-      const codes = await scanImage(request.bytes, request.mime, request.decode, { rasterImage: deps.rasterImage, decode });
+      const codes = await scanImage(
+        request.bytes,
+        request.mime,
+        { ...request.decode, maxMegapixels: request.maxMegapixels },
+        { rasterImage: deps.rasterImage, decode },
+      );
       post({ jobId, type: 'codes', codes });
       post({ jobId, type: 'done' });
     } catch {

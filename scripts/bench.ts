@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createCanvas, loadImage, type Canvas } from '@napi-rs/canvas';
-import { loadDecoder, ALL_CODE_FORMATS, type Pixels } from '../src/features/decode';
+import { loadDecoder, type Pixels } from '../src/features/decode';
+import { CODE_FORMATS as ALL_CODE_FORMATS } from '../src/features/settings';
 import { codeFreeScene, photoLike, placeAt, renderSymbol, textPage } from './lib/fixture-art';
 
 const RUNS = Number(process.env.BENCH_RUNS ?? 7);
@@ -53,16 +54,15 @@ const opts = { formats: ALL_CODE_FORMATS };
 const quantile = (sorted: number[], q: number) => sorted[Math.min(sorted.length - 1, Math.ceil(q * sorted.length) - 1)] ?? NaN;
 
 console.log(`runs per case: ${RUNS}\n`);
-console.log(['case'.padEnd(36), 'size'.padStart(11), 'median ms'.padStart(10), 'p95 ms'.padStart(8), 'codes'.padStart(6), 'cand.'.padStart(6)].join(' '));
+console.log(['case'.padEnd(36), 'size'.padStart(11), 'median ms'.padStart(10), 'p95 ms'.padStart(8), 'codes'.padStart(6)].join(' '));
 for (const [name, canvas] of cases) {
   const img = pixels(canvas);
   const times: number[] = [];
-  let last = { codes: 0, candidates: 0 };
+  let codes = 0;
   for (let i = 0; i < RUNS; i++) {
     const t0 = performance.now();
-    const r = await decode(img, opts);
+    codes = (await decode(img, opts)).length;
     times.push(performance.now() - t0);
-    last = { codes: r.codes.length, candidates: r.candidates };
   }
   times.sort((a, b) => a - b);
   console.log([
@@ -70,7 +70,6 @@ for (const [name, canvas] of cases) {
     `${img.width}x${img.height}`.padStart(11),
     quantile(times, 0.5).toFixed(1).padStart(10),
     quantile(times, 0.95).toFixed(1).padStart(8),
-    String(last.codes).padStart(6),
-    String(last.candidates).padStart(6),
+    String(codes).padStart(6),
   ].join(' '));
 }

@@ -156,4 +156,21 @@ describe('overlay panel', () => {
     expect(meta?.textContent).toBe('Data Matrix · scan.png +1 more');
     expect(meta?.getAttribute('title')).toBe('scan.png\nlabel.pdf · p.3');
   });
+
+  it('shows the panel for errors only, with the limit in the error line', () => {
+    const overlay = anOverlay();
+
+    overlay.send(
+      { type: 'scan-started', sourceCount: 2 },
+      { type: 'source-error', source: { kind: 'attachment', name: 'big-scan.pdf', partName: '1.2' }, reason: 'too-large', detail: { sizeMB: 14, limitMB: 10 } },
+      { type: 'source-error', source: { kind: 'attachment', name: 'label.pdf', partName: '1.3' }, reason: 'timeout', detail: { seconds: 30 } },
+      { type: 'scan-finished' },
+    );
+
+    expect(overlay.host()).not.toBeNull();
+    expect([...(overlay.root()?.querySelectorAll('.error') ?? [])].map(e => e.textContent)).toEqual([
+      'big-scan.pdf — skipped (14 MB > 10 MB limit)',
+      'label.pdf — timed out after 30 s',
+    ]);
+  });
 });

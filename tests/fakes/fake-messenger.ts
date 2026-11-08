@@ -6,6 +6,8 @@ export interface FakeAttachment {
   readonly name: string;
   readonly contentType: string;
   readonly bytes: Uint8Array;
+  /** Size reported by listAttachments; defaults to the byte length. */
+  readonly reportedSize?: number;
 }
 
 export interface FakeInlineImage {
@@ -124,6 +126,11 @@ export function createFakeMessenger() {
       getURL: path => `moz-extension://fake/${path}`,
     },
     storage: {
+      local: {
+        get: () => Promise.resolve({}),
+        set: () => Promise.resolve(),
+        remove: () => Promise.resolve(),
+      },
       session: {
         get: key => Promise.resolve(Object.fromEntries(
           (typeof key === 'string' ? [key] : key ?? [...session.keys()]).filter(k => session.has(k)).map(k => [k, structuredClone(session.get(k))]),
@@ -140,7 +147,7 @@ export function createFakeMessenger() {
         const m = messages.get(messageId);
         if (!m) return Promise.reject(new Error(`no message ${messageId}`));
         return Promise.resolve(partsOf(m).all.filter(p => p.listedAsAttachment).map(p => ({
-          name: p.name, contentType: p.contentType, partName: p.partName, size: p.bytes.byteLength,
+          name: p.name, contentType: p.contentType, partName: p.partName, size: ('reportedSize' in p ? p.reportedSize : undefined) ?? p.bytes.byteLength,
         })));
       },
       getAttachmentFile: (messageId, part) => {

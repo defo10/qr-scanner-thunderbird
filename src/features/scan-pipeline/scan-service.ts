@@ -7,7 +7,7 @@ export interface ScanServiceDeps {
   readonly tb: ScanTb & Pick<TbApi, 'onScanPortConnected' | 'sessionStore'>;
   readonly worker: WorkerClient;
   readonly htmlParser: DOMParser;
-  readonly settings: () => ScanSettings;
+  readonly settings: () => Promise<ScanSettings>;
 }
 
 // - Scans run only for a display script that holds an open port, i.e. only
@@ -26,16 +26,11 @@ export function startScanService(deps: ScanServiceDeps): void {
     running.set(tabId, controller);
     port.onDisconnect(() => controller.abort());
 
-    const ctx = {
-      tb: deps.tb,
-      worker: deps.worker,
-      cache,
-      signal: controller.signal,
-      htmlParser: deps.htmlParser,
-      settings: deps.settings(),
-      tabId,
-    };
-    runScan(ctx, event => port.post(event))
+    deps.settings()
+      .then(settings => runScan(
+        { tb: deps.tb, worker: deps.worker, cache, signal: controller.signal, htmlParser: deps.htmlParser, settings, tabId },
+        event => port.post(event),
+      ))
       .catch((e: unknown) => console.error('scan failed', e))
       .finally(() => { if (running.get(tabId) === controller) running.delete(tabId); });
   });

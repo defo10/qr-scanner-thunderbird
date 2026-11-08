@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { imageFixture, nodeDecoder } from '../../../tests/helpers/load-fixture';
-import { ALL_CODE_FORMATS } from './index';
+import { CODE_FORMATS as ALL_CODE_FORMATS } from '../settings';
 
 const allFormats = { formats: ALL_CODE_FORMATS };
 
@@ -19,15 +19,15 @@ describe('decodePixels', () => {
   ])('decodes %s as %s', async (fixture, format, text, contentKind) => {
     const decode = await nodeDecoder();
 
-    const result = await decode(await imageFixture(fixture), allFormats);
+    const codes = await decode(await imageFixture(fixture), allFormats);
 
-    expect(result.codes).toEqual([expect.objectContaining({ format, text, contentKind })]);
+    expect(codes).toEqual([expect.objectContaining({ format, text, contentKind })]);
   });
 
   it('keeps the GS1 separator in the raw text of a GS1 Data Matrix', async () => {
     const decode = await nodeDecoder();
 
-    const { codes } = await decode(await imageFixture('datamatrix-gs1.png'), allFormats);
+    const codes = await decode(await imageFixture('datamatrix-gs1.png'), allFormats);
 
     expect(codes).toEqual([expect.objectContaining({
       format: 'DataMatrix',
@@ -40,7 +40,7 @@ describe('decodePixels', () => {
   it('reports a binary payload with its exact bytes', async () => {
     const decode = await nodeDecoder();
 
-    const { codes } = await decode(await imageFixture('datamatrix-binary.png'), allFormats);
+    const codes = await decode(await imageFixture('datamatrix-binary.png'), allFormats);
 
     expect(codes).toHaveLength(1);
     expect(codes[0]?.contentKind).toBe('Binary');
@@ -50,49 +50,41 @@ describe('decodePixels', () => {
   it('finds every code when an image contains several', async () => {
     const decode = await nodeDecoder();
 
-    const { codes } = await decode(await imageFixture('datamatrix-multiple.png'), allFormats);
+    const codes = await decode(await imageFixture('datamatrix-multiple.png'), allFormats);
 
     expect(codes.map(c => c.text).sort()).toEqual(['MULTI-A', 'MULTI-B', 'MULTI-C']);
   });
 
-  it('finds neither codes nor candidates in an image without a code', async () => {
+  it('finds nothing in an image without a code', async () => {
     const decode = await nodeDecoder();
 
-    const result = await decode(await imageFixture('no-code.png'), allFormats);
+    const codes = await decode(await imageFixture('no-code.png'), allFormats);
 
-    expect(result).toEqual({ codes: [], candidates: 0 });
-  });
-
-  it('counts a located but undecodable symbol as a candidate', async () => {
-    const decode = await nodeDecoder();
-
-    const result = await decode(await imageFixture('datamatrix-damaged.png'), allFormats);
-
-    expect(result).toEqual({ codes: [], candidates: 1 });
+    expect(codes).toEqual([]);
   });
 
   it('does not report codes of disabled formats', async () => {
     const decode = await nodeDecoder();
 
     const qrOnlyImage = await imageFixture('qr-url.png');
-    const result = await decode(qrOnlyImage, { formats: ['DataMatrix', 'MicroQRCode'] });
+    const codes = await decode(qrOnlyImage, { formats: ['DataMatrix', 'MicroQRCode'] });
 
-    expect(result.codes).toEqual([]);
+    expect(codes).toEqual([]);
   });
 
   it('does not report Micro QR codes when only regular QR is enabled', async () => {
     const decode = await nodeDecoder();
 
-    const result = await decode(await imageFixture('microqr.png'), { formats: ['QRCode'] });
+    const codes = await decode(await imageFixture('microqr.png'), { formats: ['QRCode'] });
 
-    expect(result.codes).toEqual([]);
+    expect(codes).toEqual([]);
   });
 
   it('reports nothing when no format is enabled', async () => {
     const decode = await nodeDecoder();
 
-    const result = await decode(await imageFixture('datamatrix-plain.png'), { formats: [] });
+    const codes = await decode(await imageFixture('datamatrix-plain.png'), { formats: [] });
 
-    expect(result).toEqual({ codes: [], candidates: 0 });
+    expect(codes).toEqual([]);
   });
 });
