@@ -2,13 +2,14 @@ import { createWorkerRuntime } from '../../src/features/scan-pipeline';
 import type { SpawnWorker } from '../../src/platform/worker-host';
 import type { WorkerRequest, WorkerResponse } from '../../src/shared/worker-protocol';
 import { nodeRasterImage } from '../helpers/load-fixture';
+import { nodePdfRuntime } from '../helpers/node-pdf';
 
 export interface FakeWorkerOptions {
   /** 1-based number of the scan job (counted across all workers) that never answers. */
   readonly hangOnJob?: number;
 }
 
-// Runs the real worker runtime in-process, with a Node rasterizer in place of
+// Runs the real worker runtime in-process, with Node rasterizers in place of
 // createImageBitmap/OffscreenCanvas.
 export function createFakeWorkerHost(options: FakeWorkerOptions = {}) {
   let spawned = 0;
@@ -20,7 +21,7 @@ export function createFakeWorkerHost(options: FakeWorkerOptions = {}) {
     spawned++;
     const listeners: ((r: WorkerResponse) => void)[] = [];
     let alive = true;
-    const runtime = createWorkerRuntime({ rasterImage: nodeRasterImage }, r => {
+    const runtime = createWorkerRuntime({ rasterImage: nodeRasterImage, loadPdfRuntime: nodePdfRuntime }, r => {
       if (alive) setTimeout(() => { if (alive) listeners.forEach(l => l(r)); }, 0);
     });
     return {

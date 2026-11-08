@@ -4,7 +4,10 @@ import {
   blankCanvas, codeFreeScene, inverted, photoLike, placeAt, renderSymbol, rotated, withQuietZone,
 } from './lib/fixture-art';
 
+import { pdfFixtures } from './lib/pdf-fixtures';
+
 const OUT = 'tests/fixtures/images';
+const PDF_OUT = 'tests/fixtures/pdf';
 
 const dm = (text: string, scale = 4) => renderSymbol({ bcid: 'datamatrix', text, scale });
 
@@ -41,4 +44,11 @@ for (const [name, make] of Object.entries(fixtures)) {
   const canvas = await make();
   await writeFile(`${OUT}/${name}.png`, canvas.toBuffer('image/png'));
   console.log(`${name}.png ${canvas.width}x${canvas.height}`);
+}
+
+await mkdir(PDF_OUT, { recursive: true });
+for (const [name, make] of Object.entries(pdfFixtures)) {
+  const bytes = await make();
+  await writeFile(`${PDF_OUT}/${name}.pdf`, bytes);
+  console.log(`${name}.pdf ${bytes.length} bytes`);
 }

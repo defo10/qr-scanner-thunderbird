@@ -21,10 +21,10 @@ describe('scanning the image attachments of a displayed message', () => {
     ]);
   });
 
-  it('reports idle for a message without image attachments', async () => {
+  it('reports idle for a message without scannable attachments', async () => {
     const { mail, workers } = aRunningScanService();
     const id = mail.deliver(aMessageWith(
-      aFileAttachment('invoice.pdf', 'application/pdf'),
+      aFileAttachment('contract.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
       aFileAttachment('notes.txt', 'text/plain'),
     ));
 

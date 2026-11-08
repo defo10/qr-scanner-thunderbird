@@ -1,4 +1,5 @@
 import { rasterImageInBrowser } from '../features/image-scan';
+import { loadBrowserPdfRuntime } from '../features/pdf-scan';
 import { createWorkerRuntime } from '../features/scan-pipeline';
 import type { WorkerRequest, WorkerResponse } from '../shared/worker-protocol';
 
@@ -8,5 +9,9 @@ interface WorkerScope {
 }
 
 const scope = self as unknown as WorkerScope;
-const handle = createWorkerRuntime({ rasterImage: rasterImageInBrowser }, r => scope.postMessage(r));
+const extensionBaseUrl = new URL('./', self.location.href).href;
+const handle = createWorkerRuntime(
+  { rasterImage: rasterImageInBrowser, loadPdfRuntime: () => loadBrowserPdfRuntime(extensionBaseUrl) },
+  r => scope.postMessage(r),
+);
 scope.onmessage = e => void handle(e.data);

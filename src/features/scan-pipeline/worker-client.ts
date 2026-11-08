@@ -1,9 +1,9 @@
 import type { SpawnWorker, WorkerHandle } from '../../platform/worker-host';
 import type { DecodedCode, ErrorReason } from '../../shared/types';
-import type { ImageJob, WorkerResponse } from '../../shared/worker-protocol';
+import type { PageCount, ScanJob, WorkerResponse } from '../../shared/worker-protocol';
 
 export type JobOutcome =
-  | { readonly status: 'done' }
+  | { readonly status: 'done'; readonly pages?: PageCount }
   | { readonly status: 'error'; readonly reason: ErrorReason }
   | { readonly status: 'aborted' };
 
@@ -15,7 +15,7 @@ export interface RunOptions {
 }
 
 export interface WorkerClient {
-  run(job: ImageJob, onCodes: OnCodes, options: RunOptions): Promise<JobOutcome>;
+  run(job: ScanJob, onCodes: OnCodes, options: RunOptions): Promise<JobOutcome>;
 }
 
 export interface WorkerClientDeps {
@@ -59,7 +59,7 @@ export function createWorkerClient(deps: WorkerClientDeps): WorkerClient {
   const onResponse = (r: WorkerResponse) => {
     if (!active || r.jobId !== active.id) return;
     if (r.type === 'codes') active.onCodes(r.codes, r.page);
-    else if (r.type === 'done') active.finish({ status: 'done' });
+    else if (r.type === 'done') active.finish(r.pages ? { status: 'done', pages: r.pages } : { status: 'done' });
     else active.finish({ status: 'error', reason: r.reason });
   };
 
@@ -80,7 +80,7 @@ export function createWorkerClient(deps: WorkerClientDeps): WorkerClient {
     return spawned;
   };
 
-  const runNow = async (job: ImageJob, onCodes: OnCodes, { signal, timeoutMs }: RunOptions): Promise<JobOutcome> => {
+  const runNow = async (job: ScanJob, onCodes: OnCodes, { signal, timeoutMs }: RunOptions): Promise<JobOutcome> => {
     if (signal.aborted) return { status: 'aborted' };
     clearTimeout(idleTimer);
     const w = await ensureWorker();

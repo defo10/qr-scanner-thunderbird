@@ -73,3 +73,32 @@ for (const [name, canvas] of cases) {
     String(codes).padStart(6),
   ].join(' '));
 }
+
+const { nodePdfRuntime, pdfFixture, recordingRenders } = await import('../tests/helpers/node-pdf');
+const { scanPdf } = await import('../src/features/pdf-scan');
+
+console.log(`\n${'pdf'.padEnd(24)} ${'pages'.padStart(5)} ${'median ms/page'.padStart(15)} ${'p95 ms/page'.padStart(12)} ${'peak canvas'.padStart(12)} ${'codes'.padStart(6)}`);
+for (const name of ['invoice-10-pages.pdf', 'mixed-3-pages.pdf', 'datamatrix-small.pdf']) {
+  const perPage: number[] = [];
+  let peak = 0;
+  let pages = 0;
+  let found = 0;
+  for (let i = 0; i < RUNS; i++) {
+    const { runtime, renders } = recordingRenders(await nodePdfRuntime());
+    found = 0;
+    const t0 = performance.now();
+    const result = await scanPdf(pdfFixture(name).slice().buffer, { ...opts, maxPages: 20, maxMegapixels: 40 }, { runtime, decode }, (_, codes) => { found += codes.length; });
+    pages = result.status === 'done' ? result.scanned : 0;
+    perPage.push((performance.now() - t0) / Math.max(1, pages));
+    peak = Math.max(peak, ...renders.map(r => r.width * r.height));
+  }
+  perPage.sort((a, b) => a - b);
+  console.log([
+    name.padEnd(24),
+    String(pages).padStart(5),
+    quantile(perPage, 0.5).toFixed(1).padStart(15),
+    quantile(perPage, 0.95).toFixed(1).padStart(12),
+    `${(peak / 1e6).toFixed(1)} MP`.padStart(12),
+    String(found).padStart(6),
+  ].join(' '));
+}

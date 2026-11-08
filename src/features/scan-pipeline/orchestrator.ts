@@ -2,6 +2,8 @@ import { findDataUriImages, findInlineImageParts, type DataUriImage, type Inline
 import type { Settings } from '../settings';
 import type { TbApi } from '../../platform/tb-api';
 import type { ScanEvent } from '../../shared/port-protocol';
+import type { SourceRef } from '../../shared/types';
+import type { ScanJob } from '../../shared/worker-protocol';
 import { sizeLimitExceeded } from './limits';
 import { planSources, type PlannedSource } from './plan-sources';
 import type { ResultEvent, ScanCache } from './session-cache';
@@ -47,7 +49,7 @@ export async function runScan(ctx: ScanContext, emitEvent: Emit): Promise<void> 
     ctx.tb.listAttachments(message.id),
     ctx.settings.scanInlineImages ? findInlineSources(ctx, message.id) : { inlineParts: [], dataUris: [] },
   ]);
-  const sources = planSources({ attachments, ...inline });
+  const sources = planSources({ attachments, ...inline }, ctx.settings);
   if (sources.length === 0) return emit({ type: 'idle' });
 
   const results: ResultEvent[] = [];
@@ -94,13 +96,25 @@ async function scanSource(ctx: ScanContext, messageId: number, source: PlannedSo
   } catch {
     return emit({ type: 'source-error', source: source.ref, reason: 'unreadable' });
   }
-  const { formats, maxImageMegapixels, perAttachmentTimeoutSec } = ctx.settings;
+  const { perAttachmentTimeoutSec } = ctx.settings;
+  const withPage = (page: number | undefined): SourceRef =>
+    page === undefined || source.ref.kind !== 'attachment' ? source.ref : { ...source.ref, page };
   const outcome = await ctx.worker.run(
-    { kind: 'image', bytes, mime: source.mime, decode: { formats }, maxMegapixels: maxImageMegapixels },
-    codes => { if (codes.length > 0) emit({ type: 'codes', source: source.ref, codes }); },
+    toJob(source, bytes, ctx.settings),
+    (codes, page) => { if (codes.length > 0) emit({ type: 'codes', source: withPage(page), codes }); },
     { signal: ctx.signal, timeoutMs: perAttachmentTimeoutSec * 1000 },
   ).catch(() => ({ status: 'error', reason: 'unreadable' }) as const);
+  if (outcome.status === 'done' && outcome.pages && outcome.pages.scanned < outcome.pages.total) {
+    emit({ type: 'source-error', source: source.ref, reason: 'page-limit', detail: { ...outcome.pages } });
+  }
   if (outcome.status !== 'error') return;
   const detail = outcome.reason === 'timeout' ? { seconds: perAttachmentTimeoutSec } : undefined;
   emit({ type: 'source-error', source: source.ref, reason: outcome.reason, ...(detail ? { detail } : {}) });
+}
+
+function toJob(source: PlannedSource, bytes: ArrayBuffer, settings: ScanSettings): ScanJob {
+  const common = { bytes, decode: { formats: settings.formats }, maxMegapixels: settings.maxImageMegapixels };
+  return source.kind === 'pdf'
+    ? { kind: 'pdf', ...common, maxPages: settings.maxPdfPages }
+    : { kind: 'image', ...common, mime: source.mime };
 }

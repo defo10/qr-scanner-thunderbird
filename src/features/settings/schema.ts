@@ -5,6 +5,7 @@ export const CODE_FORMATS: readonly CodeFormat[] = ['DataMatrix', 'QRCode', 'Mic
 export interface Settings {
   readonly formats: readonly CodeFormat[];
   readonly scanInlineImages: boolean;
+  readonly scanPdfs: boolean;
   readonly maxAttachmentMB: number;
   readonly maxImageMegapixels: number;
   readonly maxPdfPages: number;
@@ -23,6 +24,7 @@ export const NUMERIC_RANGES: Readonly<Record<NumericSetting, { readonly min: num
 export const DEFAULT_SETTINGS: Settings = {
   formats: CODE_FORMATS,
   scanInlineImages: true,
+  scanPdfs: true,
   maxAttachmentMB: 10,
   maxImageMegapixels: 40,
   maxPdfPages: 20,
@@ -39,6 +41,7 @@ export function normalizeSettings(raw: unknown): Settings {
   return {
     formats: formats.length > 0 ? formats : DEFAULT_SETTINGS.formats,
     scanInlineImages: typeof r.scanInlineImages === 'boolean' ? r.scanInlineImages : DEFAULT_SETTINGS.scanInlineImages,
+    scanPdfs: typeof r.scanPdfs === 'boolean' ? r.scanPdfs : DEFAULT_SETTINGS.scanPdfs,
     maxAttachmentMB: clampSetting('maxAttachmentMB', r.maxAttachmentMB),
     maxImageMegapixels: clampSetting('maxImageMegapixels', r.maxImageMegapixels),
     maxPdfPages: clampSetting('maxPdfPages', r.maxPdfPages),

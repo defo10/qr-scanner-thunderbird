@@ -36,7 +36,7 @@ export function reportedAsMegabytes(attachment: FakeAttachment, megabytes: numbe
   return { ...attachment, reportedSize: megabytes * 1024 * 1024 };
 }
 
-export function aFileAttachment(name: string, contentType: string, bytes = new TextEncoder().encode('not an image')): FakeAttachment {
+export function aFileAttachment(name: string, contentType: string, bytes: Uint8Array = new TextEncoder().encode('not an image')): FakeAttachment {
   return { name, contentType, bytes };
 }
 

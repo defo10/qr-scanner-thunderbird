@@ -24,6 +24,13 @@ const watch = process.argv.includes('--watch');
 await rm('dist', { recursive: true, force: true });
 await cp('static', 'dist', { recursive: true });
 await copyFile('node_modules/zxing-wasm/dist/reader/zxing_reader.wasm', 'dist/zxing_reader.wasm');
+// pdf.js is shipped verbatim (not re-bundled) so reviewers can diff it against
+// the npm package; the worker imports it on the first PDF.
+await cp('node_modules/pdfjs-dist/legacy/build/pdf.mjs', 'dist/pdfjs/pdf.mjs');
+await cp('node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs', 'dist/pdfjs/pdf.worker.mjs');
+for (const dir of ['cmaps', 'standard_fonts', 'wasm', 'iccs']) {
+  await cp(`node_modules/pdfjs-dist/${dir}`, `dist/pdfjs/${dir}`, { recursive: true });
+}
 
 const contexts = await Promise.all(builds.map(b => context(b)));
 if (watch) {
