@@ -8,8 +8,19 @@ export interface FakeAttachment {
   readonly bytes: Uint8Array;
 }
 
+export interface FakeInlineImage {
+  readonly name: string;
+  readonly contentType: string;
+  readonly bytes: Uint8Array;
+  readonly contentId?: string;
+  /** Some clients also list inline images as attachments. */
+  readonly listedAsAttachment?: boolean;
+}
+
 export interface FakeMessage {
   readonly attachments: readonly FakeAttachment[];
+  readonly html?: string;
+  readonly inlineImages?: readonly FakeInlineImage[];
   readonly junk?: boolean;
   readonly folderSpecialUse?: readonly string[];
 }
@@ -34,7 +45,55 @@ function fakeEvent<A extends unknown[]>() {
   };
 }
 
+// Part layout: 1 multipart/mixed → 1.1 multipart/related (1.1.1 text/html,
+// 1.1.2… inline images), then attachments as 1.2, 1.3, …
 const partName = (index: number) => `1.${index + 2}`;
+const inlinePartName = (index: number) => `1.1.${index + 2}`;
+
+function partsOf(m: FakeMessage) {
+  const attachments = m.attachments.map((a, i) => ({ ...a, partName: partName(i), contentId: undefined, listedAsAttachment: true }));
+  const inline = (m.inlineImages ?? []).map((img, i) => ({ ...img, partName: inlinePartName(i) }));
+  return { attachments, inline, all: [...attachments, ...inline] };
+}
+
+function mimeTree(m: FakeMessage): messenger.messages.MessagePart {
+  const { attachments, inline } = partsOf(m);
+  return {
+    partName: '',
+    contentType: 'message/rfc822',
+    parts: [{
+      partName: '1',
+      contentType: 'multipart/mixed',
+      parts: [
+        {
+          partName: '1.1',
+          contentType: 'multipart/related',
+          parts: [
+            { partName: '1.1.1', contentType: 'text/html', headers: {}, size: (m.html ?? '').length },
+            ...inline.map(img => ({
+              partName: img.partName,
+              contentType: img.contentType,
+              name: img.name,
+              size: img.bytes.byteLength,
+              headers: {
+                'content-type': [img.contentType],
+                ...(img.contentId ? { 'content-id': [`<${img.contentId}>`] } : {}),
+                'content-disposition': [`inline; filename="${img.name}"`],
+              },
+            })),
+          ],
+        },
+        ...attachments.map(a => ({
+          partName: a.partName,
+          contentType: a.contentType,
+          name: a.name,
+          size: a.bytes.byteLength,
+          headers: { 'content-disposition': [`attachment; filename="${a.name}"`] },
+        })),
+      ],
+    }],
+  };
+}
 
 // In-memory stand-in for the subset of the Thunderbird messenger API the
 // extension uses, plus driver methods to simulate user and mail activity.
@@ -66,15 +125,24 @@ export function createFakeMessenger() {
       listAttachments: messageId => {
         const m = messages.get(messageId);
         if (!m) return Promise.reject(new Error(`no message ${messageId}`));
-        return Promise.resolve(m.attachments.map((a, i) => ({
-          name: a.name, contentType: a.contentType, partName: partName(i), size: a.bytes.byteLength,
+        return Promise.resolve(partsOf(m).all.filter(p => p.listedAsAttachment).map(p => ({
+          name: p.name, contentType: p.contentType, partName: p.partName, size: p.bytes.byteLength,
         })));
       },
       getAttachmentFile: (messageId, part) => {
         attachmentDownloads.push({ messageId, partName: part });
-        const a = messages.get(messageId)?.attachments.find((_, i) => partName(i) === part);
-        if (!a) return Promise.reject(new Error(`no part ${part}`));
-        return Promise.resolve(new File([a.bytes.slice()], a.name, { type: a.contentType }));
+        const m = messages.get(messageId);
+        const found = m && partsOf(m).all.find(p => p.partName === part);
+        if (!found) return Promise.reject(new Error(`no part ${part}`));
+        return Promise.resolve(new File([found.bytes.slice()], found.name, { type: found.contentType }));
+      },
+      getFull: messageId => {
+        const m = messages.get(messageId);
+        return m ? Promise.resolve(mimeTree(m)) : Promise.reject(new Error(`no message ${messageId}`));
+      },
+      listInlineTextParts: messageId => {
+        const html = messages.get(messageId)?.html;
+        return Promise.resolve(html === undefined ? [] : [{ contentType: 'text/html', content: html }]);
       },
     },
     messageDisplay: {

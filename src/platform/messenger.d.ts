@@ -65,6 +65,23 @@ declare namespace messenger {
       contentId?: string;
     }
 
+    interface MessagePart {
+      contentType?: string;
+      partName?: string;
+      name?: string;
+      size?: number;
+      headers?: Record<string, string[]>;
+      rawHeaders?: Record<string, string[]>;
+      parts?: MessagePart[];
+    }
+
+    interface InlineTextPart {
+      contentType: string;
+      content: string;
+    }
+
+    function getFull(messageId: number, options?: { decodeContent?: boolean; decodeHeaders?: boolean; decrypt?: boolean }): Promise<MessagePart>;
+    function listInlineTextParts(messageId: number): Promise<InlineTextPart[]>;
     function listAttachments(messageId: number): Promise<MessageAttachment[]>;
     function getAttachmentFile(messageId: number, partName: string): Promise<File>;
   }

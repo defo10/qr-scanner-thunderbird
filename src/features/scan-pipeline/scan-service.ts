@@ -5,6 +5,7 @@ import type { WorkerClient } from './worker-client';
 export interface ScanServiceDeps {
   readonly tb: ScanTb & Pick<TbApi, 'onScanPortConnected'>;
   readonly worker: WorkerClient;
+  readonly htmlParser: DOMParser;
   readonly settings: () => ScanSettings;
 }
 
@@ -13,7 +14,7 @@ export interface ScanServiceDeps {
 export function startScanService(deps: ScanServiceDeps): void {
   deps.tb.onScanPortConnected(port => {
     if (port.tabId === undefined) return;
-    const ctx = { tb: deps.tb, worker: deps.worker, settings: deps.settings(), tabId: port.tabId };
+    const ctx = { tb: deps.tb, worker: deps.worker, htmlParser: deps.htmlParser, settings: deps.settings(), tabId: port.tabId };
     runScan(ctx, event => port.post(event)).catch((e: unknown) => console.error('scan failed', e));
   });
 }

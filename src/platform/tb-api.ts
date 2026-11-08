@@ -15,6 +15,21 @@ export interface AttachmentInfo {
   readonly size: number;
 }
 
+export interface MessagePartInfo {
+  readonly contentType: string;
+  readonly partName: string;
+  readonly name: string;
+  readonly size: number;
+  /** Lower-case header names. */
+  readonly headers: Readonly<Record<string, readonly string[]>>;
+  readonly parts: readonly MessagePartInfo[];
+}
+
+export interface InlineTextPartInfo {
+  readonly contentType: string;
+  readonly content: string;
+}
+
 export interface ScanPort {
   readonly tabId: number | undefined;
   post(event: ScanEvent): void;
@@ -87,9 +102,36 @@ export function createTbApi(m: Messenger) {
       return list.map(a => ({ name: a.name, partName: a.partName, contentType: a.contentType, size: a.size }));
     },
 
+    // Headers are requested explicitly: from TB 133 on they are only included
+    // when asked for, and older versions ignore the option.
+    async getMessageParts(messageId: number): Promise<MessagePartInfo> {
+      return toPartInfo(await m.messages.getFull(messageId, { decodeHeaders: true }));
+    },
+
+    async listInlineTextParts(messageId: number): Promise<InlineTextPartInfo[]> {
+      const parts = await m.messages.listInlineTextParts(messageId);
+      return parts.map(p => ({ contentType: p.contentType, content: p.content }));
+    },
+
+    // Also used for inline (non-attachment) parts such as cid: images; there is
+    // no other API that returns the bytes of a non-text part.
     getAttachmentFile(messageId: number, partName: string): Promise<Blob> {
       return m.messages.getAttachmentFile(messageId, partName);
     },
+  };
+}
+
+function toPartInfo(p: messenger.messages.MessagePart): MessagePartInfo {
+  const headers = Object.fromEntries(
+    Object.entries(p.headers ?? p.rawHeaders ?? {}).map(([k, v]) => [k.toLowerCase(), v]),
+  );
+  return {
+    contentType: p.contentType ?? '',
+    partName: p.partName ?? '',
+    name: p.name ?? '',
+    size: p.size ?? 0,
+    headers,
+    parts: (p.parts ?? []).map(toPartInfo),
   };
 }
 

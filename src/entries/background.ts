@@ -9,5 +9,10 @@ const worker = createWorkerClient({
   loadWasm: () => compileWasm(tb.extensionUrl('zxing_reader.wasm')),
 });
 
-startScanService({ tb, worker, settings: () => ({ formats: ALL_CODE_FORMATS }) });
+startScanService({
+  tb,
+  worker,
+  htmlParser: new DOMParser(),
+  settings: () => ({ formats: ALL_CODE_FORMATS, scanInlineImages: true }),
+});
 void tb.registerDisplayScript({ js: ['display.js'] });

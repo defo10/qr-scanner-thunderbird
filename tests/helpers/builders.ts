@@ -5,12 +5,26 @@ import type { DecodedCode } from '../../src/shared/types';
 import { englishTranslate } from './i18n';
 import { createWorkerClient, startScanService, type ScanSettings } from '../../src/features/scan-pipeline';
 import { createTbApi } from '../../src/platform/tb-api';
-import { createFakeMessenger, type FakeAttachment, type FakeMessage } from '../fakes/fake-messenger';
+import { Window } from 'happy-dom';
+import { createFakeMessenger, type FakeAttachment, type FakeInlineImage, type FakeMessage } from '../fakes/fake-messenger';
 import { createFakeWorkerHost } from '../fakes/fake-worker';
 import { fixtureBytes, nodeZxingWasm } from './load-fixture';
 
 export function aMessageWith(...attachments: FakeAttachment[]): FakeMessage {
   return { attachments };
+}
+
+/** An HTML message whose body references its inline images by cid:. */
+export function anHtmlMessage(html: string, ...inlineImages: FakeInlineImage[]): FakeMessage {
+  return { attachments: [], html, inlineImages };
+}
+
+export function aCidImage(contentId: string, bytes: Uint8Array, options: { name?: string; listedAsAttachment?: boolean } = {}): FakeInlineImage {
+  return { name: options.name ?? `${contentId}.png`, contentType: 'image/png', bytes, contentId, listedAsAttachment: options.listedAsAttachment ?? false };
+}
+
+export function aDataUri(bytes: Uint8Array, mime = 'image/png'): string {
+  return `data:${mime};base64,${Buffer.from(bytes).toString('base64')}`;
 }
 
 export function anImageAttachment(name: string, bytes: Uint8Array, contentType = 'image/png'): FakeAttachment {
@@ -31,11 +45,15 @@ export function corruptPng(): Uint8Array {
 }
 
 /** A background scan service wired to a fake messenger and an in-process worker. */
-export function aRunningScanService(settings: ScanSettings = { formats: ALL_CODE_FORMATS }) {
+export const defaultScanSettings: ScanSettings = { formats: ALL_CODE_FORMATS, scanInlineImages: true };
+
+export function aRunningScanService(settings: ScanSettings = defaultScanSettings) {
   const mail = createFakeMessenger();
   const workers = createFakeWorkerHost();
   const worker = createWorkerClient({ spawn: workers.spawn, loadWasm: nodeZxingWasm });
-  startScanService({ tb: createTbApi(mail.messenger), worker, settings: () => settings });
+  // happy-dom's types differ slightly from lib.dom's, the behavior does not.
+  const htmlParser = new new Window().DOMParser() as unknown as DOMParser;
+  startScanService({ tb: createTbApi(mail.messenger), worker, htmlParser, settings: () => settings });
   return { mail, workers };
 }
 
