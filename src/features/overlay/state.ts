@@ -7,17 +7,15 @@ export interface OverlayState {
   readonly entries: readonly ScanEntry[];
   readonly errors: readonly SourceError[];
   readonly minimized: boolean;
-  readonly closed: boolean;
 }
 
-export type UiAction = { readonly type: 'minimize' } | { readonly type: 'restore' } | { readonly type: 'close' };
+export type UiAction = { readonly type: 'minimize' } | { readonly type: 'restore' };
 
 export const initialOverlayState: OverlayState = {
   phase: 'waiting',
   entries: [],
   errors: [],
   minimized: false,
-  closed: false,
 };
 
 export function reduce(s: OverlayState, e: ScanEvent | UiAction): OverlayState {
@@ -37,13 +35,11 @@ export function reduce(s: OverlayState, e: ScanEvent | UiAction): OverlayState {
       return { ...s, minimized: true };
     case 'restore':
       return { ...s, minimized: false };
-    case 'close':
-      return { ...s, closed: true };
   }
 }
 
 // Nothing is shown before the first result, so messages without codes never
 // flash an empty panel.
 export function isVisible(s: OverlayState): boolean {
-  return !s.closed && (s.entries.length > 0 || s.errors.length > 0);
+  return s.entries.length > 0 || s.errors.length > 0;
 }

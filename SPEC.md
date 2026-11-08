@@ -19,7 +19,7 @@ A Thunderbird extension that scans the displayed email automatically for 2D code
 | Performance verification | A **benchmark script** (chunks 2 and 10) measures code-free and code-bearing fixtures, and its numbers are used to tune these defaults |
 | Trigger | **Scan only when a message is displayed** (preview pane, tab or window). **Never** on mail arrival, never in the background, never for messages that are not on screen. Junk is skipped. Auto-scan can be switched off in settings; a toolbar button then triggers the scan |
 | Formats | All 2D: Data Matrix, QR, Micro QR, rMQR, Aztec, PDF417. Each can be toggled |
-| Overlay | **Always-expanded panel, fixed in the viewport** at the top left, with **minimize** (to a badge) and **close** (for this message) |
+| Overlay | **Always-expanded panel, fixed in the viewport** at the top left, with **minimize** (to a badge); no close button (removed after chunk 13 at the user's request) |
 | Copy semantics | **Raw copy** keeps the exact text, including `\x1D`. Display is readable: GS1 as `(01)…(17)…`, control characters as `␝`. GS1 codes also get **Copy as HRI** |
 | Binary payloads | Displayed and copied as **Base64**, marked "binary" |
 | URLs | **Text only**, never clickable, with the domain highlighted (anti-quishing) |
@@ -291,9 +291,8 @@ Tests:
 
 Constraints / changes:
 - Host element appended to `document.documentElement`, **closed shadow root**, `position: fixed; top: 8px; left: 8px; z-index: 2147483647`. All styles live inside the shadow, so the mail's CSS can't break the panel and the panel doesn't leak styles into the mail.
-- **Always expanded** while results exist. Header: icon, "N codes", a scanning spinner while running, a **minimize** button (`–`) and a **close** button (`✕`).
+- **Always expanded** while results exist. Header: icon, "N codes", a scanning spinner while running, and a **minimize** button (`–`). (A close button was dropped after chunk 13.)
   - Minimize collapses to a small badge (`▦ N`), and clicking the badge restores the panel. This is per message, not persisted.
-  - Close removes the panel for this message display. The next message shows the panel again.
 - `max-height: 40vh`, with the list scrolling inside. `max-width: min(480px, 90vw)`. Long values wrap (`overflow-wrap: anywhere`).
 - **Visibility:** the panel stays hidden until the first `codes` or `source-error` event, with no flicker for mails without codes. While scanning with ≥1 result, it shows the spinner. Once finished with 0 codes and 0 errors, nothing is ever shown.
 - Each entry has a format label (`Data Matrix`, `QR`…), the source label (`label.pdf · p.2` or `inline image`), the value and a **Copy** button.
@@ -308,10 +307,10 @@ Gist:
 type OverlayState = {
   phase: 'waiting' | 'scanning' | 'done' | 'idle';
   entries: ScanEntry[]; errors: SourceError[];
-  minimized: boolean; closed: boolean;
+  minimized: boolean;
 };
 export function reduce(s: OverlayState, e: PortEvent | UiAction): OverlayState;
-export function isVisible(s: OverlayState): boolean; // !closed && (entries.length || errors.length)
+export function isVisible(s: OverlayState): boolean; // entries.length || errors.length
 ```
 
 Files: `src/features/overlay/{state.ts,view.ts,overlay.css,copy-button.ts,state.test.ts,view.test.ts}`, `src/entries/display.ts`, `src/platform/clipboard.ts`, `src/shared/i18n.ts`, `static/_locales/en/messages.json`, `build.ts` (CSS inlined as text into the display bundle), `eslint.config.js`.
@@ -322,7 +321,7 @@ Tests (happy-dom):
 - Clicking Copy on a GS1 entry writes the exact raw string, including `\x1D`, to the (faked) clipboard.
 - A URL code renders with no anchor element, and the host `evil.example` is in a bold element.
 - A code containing `<img src=x onerror=…>` is rendered as literal text.
-- Minimize shows the badge with the count, and clicking the badge restores the panel. Close removes the host.
+- Minimize shows the badge with the count, and clicking the badge restores the panel.
 
 ---
 
@@ -552,7 +551,7 @@ Run these in TB 128 ESR and the current release, on macOS, Windows and Linux whe
 5. A 15 MB attachment shows "skipped (> 10 MB)". After raising the limit to 20 in settings and reopening the mail, it is scanned.
 6. Switching quickly between 10 messages with PDFs causes no CPU spike after the switching stops, and the panel shows only the current mail's codes.
 6a. Arrowing through 10 mails that have photo and PDF attachments but no codes: no visible lag in the thread pane, and the CPU in Activity Monitor or Task Manager settles within a second of stopping.
-7. Minimize, then restore, then close. The next mail shows the panel again.
+7. Minimize, then restore. The next mail shows the panel expanded again.
 8. With auto-scan off, nothing happens on display, and the toolbar button scans.
 9. Junk-folder mails show no panel.
 10. An OpenPGP-encrypted mail with an image attachment is either scanned or shows "could not be read", and never errors silently.

@@ -27,10 +27,6 @@
     "message": "Show codes",
     "description": "Tooltip of the badge that restores the overlay."
   },
-  "close": {
-    "message": "Close",
-    "description": "Tooltip of the button that hides the overlay for this message."
-  },
   "overlayLabel": {
     "message": "Codes found in this message",
     "description": "Accessible name of the overlay panel."

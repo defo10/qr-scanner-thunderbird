@@ -26,7 +26,7 @@ Record the Thunderbird version, OS and result for each item.
 
 ## Panel
 
-13. Minimize shows a badge "▦ N"; clicking it restores the panel. Close hides it; the next mail shows the panel again.
+13. Minimize shows a badge "▦ N"; clicking it restores the panel. The next mail shows the panel expanded again.
 14. A code containing markup (e.g. a QR with `<img src=x onerror=alert(1)>`) shows the literal text.
 15. A URL code is not clickable and its host is bold; for `https://bank.example@evil.example/` the bold part is `evil.example`.
 16. Dark theme: the panel and the settings page are legible in both light and dark Thunderbird themes.

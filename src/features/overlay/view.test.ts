@@ -95,16 +95,6 @@ describe('overlay panel', () => {
     expect(overlay.entries()).toHaveLength(2);
   });
 
-  it('removes itself on close and stays closed when more codes arrive', () => {
-    const overlay = anOverlay();
-    overlay.send(codesFrom('label.png', aDecodedCode()));
-
-    overlay.click('.close');
-    overlay.send(codesFrom('other.png', aDecodedCode({ text: 'LATER' })));
-
-    expect(overlay.host()).toBeNull();
-  });
-
   it('shows the panel with an error line when a source could not be read', () => {
     const overlay = anOverlay();
 

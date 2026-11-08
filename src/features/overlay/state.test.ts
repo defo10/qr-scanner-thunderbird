@@ -22,14 +22,6 @@ describe('overlay state', () => {
     ]);
   });
 
-  it('is invisible once closed, whatever arrives afterwards', () => {
-    const closed = reduce(reduce(initialOverlayState, codesFrom('label.png', aDecodedCode())), { type: 'close' });
-
-    const later = reduce(closed, codesFrom('other.png', aDecodedCode()));
-
-    expect(isVisible(later)).toBe(false);
-  });
-
   it('does not change the previous state', () => {
     const before = initialOverlayState;
 

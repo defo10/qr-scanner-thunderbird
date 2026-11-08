@@ -110,7 +110,7 @@ export function createOverlayView(deps: OverlayViewDeps): OverlayView {
       spinner.setAttribute('aria-label', t('scanning'));
       header.append(spinner);
     }
-    header.append(button('minimize', '–', t('minimize'), { type: 'minimize' }), button('close', '✕', t('close'), { type: 'close' }));
+    header.append(button('minimize', '–', t('minimize'), { type: 'minimize' }));
     const list = el('ol', 'list');
     list.append(...s.entries.map(row));
     section.append(header, list);
