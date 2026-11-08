@@ -1,0 +1,194 @@
+{
+  "extensionName": {
+    "message": "QR & Data Matrix Scanner",
+    "description": "Name of the extension."
+  },
+  "extensionDescription": {
+    "message": "Finds and decodes Data Matrix, QR and other 2D codes in the displayed email. Works locally and offline.",
+    "description": "Description of the extension."
+  },
+  "codesCountOne": {
+    "message": "1 code",
+    "description": "Overlay header when exactly one code was found."
+  },
+  "codesCountOther": {
+    "message": "$1 codes",
+    "description": "Overlay header with the number of codes found. $1 = count."
+  },
+  "scanning": {
+    "message": "Scanning…",
+    "description": "Accessible label of the spinner shown while a scan is running."
+  },
+  "minimize": {
+    "message": "Minimize",
+    "description": "Tooltip of the button that collapses the overlay to a badge."
+  },
+  "restore": {
+    "message": "Show codes",
+    "description": "Tooltip of the badge that restores the overlay."
+  },
+  "overlayLabel": {
+    "message": "Codes found in this message",
+    "description": "Accessible name of the overlay panel."
+  },
+  "copy": {
+    "message": "Copy",
+    "description": "Button that copies a decoded code."
+  },
+  "copied": {
+    "message": "Copied ✓",
+    "description": "Shown on the copy button for a moment after copying."
+  },
+  "copyFailed": {
+    "message": "Copy failed",
+    "description": "Shown on the copy button when copying failed."
+  },
+  "inlineImage": {
+    "message": "inline image",
+    "description": "Source label for an image embedded in the message body."
+  },
+  "sourceWithPage": {
+    "message": "$1 · p.$2",
+    "description": "Source label for a PDF page. $1 = file name, $2 = page number."
+  },
+  "errorUnreadable": {
+    "message": "$1 — could not be read",
+    "description": "Scan error. $1 = source label."
+  },
+  "errorGeneric": {
+    "message": "$1 — could not be scanned",
+    "description": "Fallback scan error. $1 = source label."
+  },
+  "formatDataMatrix": {
+    "message": "Data Matrix",
+    "description": "Name of the 2D code format."
+  },
+  "formatQRCode": {
+    "message": "QR",
+    "description": "Name of the 2D code format."
+  },
+  "formatMicroQRCode": {
+    "message": "Micro QR",
+    "description": "Name of the 2D code format."
+  },
+  "formatrMQRCode": {
+    "message": "rMQR",
+    "description": "Name of the 2D code format."
+  },
+  "formatAztec": {
+    "message": "Aztec",
+    "description": "Name of the 2D code format."
+  },
+  "formatPDF417": {
+    "message": "PDF417",
+    "description": "Name of the 2D code format."
+  },
+  "copyAsHri": {
+    "message": "Copy as HRI",
+    "description": "Button that copies a GS1 code in bracketed human-readable form, e.g. (01)…(17)…."
+  },
+  "binaryTag": {
+    "message": "binary",
+    "description": "Tag on a code whose payload is binary data, shown as Base64."
+  },
+  "sourceMore": {
+    "message": "$1 +$2 more",
+    "description": "Source label of a code found in several places. $1 = first source, $2 = number of further sources."
+  },
+  "errorTooLarge": {
+    "message": "$1 — skipped ($2 MB > $3 MB limit)",
+    "description": "Scan error. $1 = source label, $2 = size in MB, $3 = limit in MB."
+  },
+  "errorTimeout": {
+    "message": "$1 — timed out after $2 s",
+    "description": "Scan error. $1 = source label, $2 = timeout in seconds."
+  },
+  "errorPageLimit": {
+    "message": "$1 — only first $2 of $3 pages scanned",
+    "description": "Scan note. $1 = file name, $2 = pages scanned, $3 = total pages."
+  },
+  "errorEncryptedPdf": {
+    "message": "$1 — password-protected PDF, not scanned",
+    "description": "Scan error. $1 = file name."
+  },
+  "errorUnsupportedType": {
+    "message": "$1 — file type not supported",
+    "description": "Scan error. $1 = source label."
+  },
+  "scanActionTitle": {
+    "message": "Scan for codes",
+    "description": "Toolbar button in the message window that starts a scan when automatic scanning is off."
+  },
+  "optionsTitle": {
+    "message": "QR & Data Matrix Scanner settings",
+    "description": "Title of the settings page."
+  },
+  "optionsAutoScan": {
+    "message": "Scan messages automatically when they are displayed",
+    "description": "Settings checkbox."
+  },
+  "optionsAutoScanHint": {
+    "message": "When off, use the “Scan for codes” button in the message toolbar.",
+    "description": "Hint below the automatic scanning checkbox."
+  },
+  "optionsSources": {
+    "message": "Where to look",
+    "description": "Settings section heading for scan sources."
+  },
+  "sourceImageAttachments": {
+    "message": "Image attachments",
+    "description": "Settings checkbox for scanning image attachments."
+  },
+  "sourceInlineImages": {
+    "message": "Images in the message body",
+    "description": "Settings checkbox for scanning inline images."
+  },
+  "sourcePdfs": {
+    "message": "PDF attachments",
+    "description": "Settings checkbox for scanning PDF attachments."
+  },
+  "optionsFormats": {
+    "message": "Code formats",
+    "description": "Settings section heading for code formats."
+  },
+  "formatsAtLeastOne": {
+    "message": "At least one format must stay enabled.",
+    "description": "Shown when the user tries to disable the last code format."
+  },
+  "optionsLimits": {
+    "message": "Limits",
+    "description": "Settings section heading for size and time limits."
+  },
+  "limitMaxAttachmentMB": {
+    "message": "Largest attachment to scan (MB)",
+    "description": "Settings field label."
+  },
+  "limitMaxImageMegapixels": {
+    "message": "Largest image size (megapixels); larger images are scaled down",
+    "description": "Settings field label."
+  },
+  "limitMaxPdfPages": {
+    "message": "PDF pages to scan",
+    "description": "Settings field label."
+  },
+  "limitPerAttachmentTimeoutSec": {
+    "message": "Time limit per attachment (seconds)",
+    "description": "Settings field label."
+  },
+  "limitOutOfRange": {
+    "message": "Enter a whole number from $1 to $2.",
+    "description": "Inline validation message. $1 = minimum, $2 = maximum."
+  },
+  "optionsSaved": {
+    "message": "Saved",
+    "description": "Shown briefly after a setting was saved."
+  },
+  "optionsSaveFailed": {
+    "message": "Could not save the settings.",
+    "description": "Shown when saving the settings failed."
+  },
+  "optionsReset": {
+    "message": "Reset to defaults",
+    "description": "Button that restores the default settings."
+  }
+}

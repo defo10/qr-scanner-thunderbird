@@ -1,0 +1,14 @@
+# Generated test fixtures are committed on purpose; do not ignore them.
+
+node_modules/
+dist/
+*.xpi
+coverage/
+.vitest-cache/
+*.log
+.DS_Store
+.env*
+
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,150 @@
+import { splitUrl, toDisplay, type DisplayText } from '../readable-text';
+import type { Translate } from '../../shared/i18n';
+import type { ScanEntry, SourceError, SourceRef } from '../../shared/types';
+import { copyButton } from './copy-button';
+import { overlayStyles } from './overlay-styles';
+import { isVisible, type OverlayState, type UiAction } from './state';
+
+export interface OverlayViewDeps {
+  readonly document: Document;
+  readonly t: Translate;
+  readonly copy: (text: string) => Promise<void>;
+  readonly dispatch: (action: UiAction) => void;
+}
+
+export interface OverlayView {
+  render(state: OverlayState): void;
+  /** The closed shadow root, unreachable from the page; exposed for tests. */
+  shadowRoot(): ShadowRoot | null;
+}
+
+// - Decoded content is attacker-controlled: it is only ever assigned through
+//   textContent, never parsed as HTML.
+// - Rows are cached per entry object, so re-rendering on every scan event
+//   keeps an in-progress "Copied" feedback intact.
+export function createOverlayView(deps: OverlayViewDeps): OverlayView {
+  const { document: doc, t } = deps;
+  let host: HTMLElement | null = null;
+  let root: ShadowRoot | null = null;
+  const rows = new WeakMap<ScanEntry, HTMLElement>();
+
+  const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] => {
+    const node = doc.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  const button = (className: string, text: string, title: string, action: UiAction): HTMLButtonElement => {
+    const b = el('button', className, text);
+    b.type = 'button';
+    b.title = title;
+    b.setAttribute('aria-label', title);
+    b.addEventListener('click', () => deps.dispatch(action));
+    return b;
+  };
+
+  const sourceLabel = (s: SourceRef): string => {
+    if (s.kind === 'inline') return s.name ? `${t('inlineImage')} (${s.name})` : t('inlineImage');
+    return s.page === undefined ? s.name : t('sourceWithPage', s.name, s.page);
+  };
+
+  const valueNode = (display: DisplayText): HTMLElement => {
+    const value = el('div', 'value');
+    const url = display.kind === 'url' ? splitUrl(display.text) : null;
+    if (url) value.append(url.beforeHost, el('b', undefined, url.host), url.afterHost);
+    else value.textContent = display.text;
+    return value;
+  };
+
+  const row = (entry: ScanEntry): HTMLElement => {
+    const cached = rows.get(entry);
+    if (cached) return cached;
+    const display = toDisplay(entry);
+    const li = el('li', 'entry');
+    const sources = entry.sources.map(sourceLabel);
+    const firstSource = sources[0] ?? '';
+    const sourceText = sources.length > 1 ? t('sourceMore', firstSource, sources.length - 1) : firstSource;
+    const meta = el('div', 'meta', `${t(`format${entry.format}`)} · ${sourceText}`);
+    meta.title = sources.join('\n');
+    if (display.kind === 'binary') meta.append(' ', el('span', 'tag', t('binaryTag')));
+    const actions = el('div', 'actions');
+    actions.append(copyButton(doc, t, deps.copy, display.copy));
+    if (display.hri !== null) actions.append(copyButton(doc, t, deps.copy, display.hri, 'copyAsHri'));
+    li.append(meta, valueNode(display), actions);
+    rows.set(entry, li);
+    return li;
+  };
+
+  const errorText = (e: SourceError): string => {
+    const label = sourceLabel(e.source);
+    const d = e.detail ?? {};
+    switch (e.reason) {
+      case 'too-large':
+        return d.sizeMB !== undefined && d.limitMB !== undefined ? t('errorTooLarge', label, d.sizeMB, d.limitMB) : t('errorGeneric', label);
+      case 'timeout':
+        return d.seconds !== undefined ? t('errorTimeout', label, d.seconds) : t('errorGeneric', label);
+      case 'page-limit':
+        return d.scanned !== undefined && d.total !== undefined ? t('errorPageLimit', label, d.scanned, d.total) : t('errorGeneric', label);
+      case 'encrypted-pdf':
+        return t('errorEncryptedPdf', label);
+      case 'unsupported-type':
+        return t('errorUnsupportedType', label);
+      case 'unreadable':
+        return t('errorUnreadable', label);
+    }
+  };
+
+  const errorLine = (e: SourceError): HTMLElement => el('li', 'error', errorText(e));
+
+  const countLabel = (n: number) => (n === 1 ? t('codesCountOne') : t('codesCountOther', n));
+
+  const panel = (s: OverlayState): HTMLElement => {
+    const section = el('section', 'panel');
+    section.setAttribute('aria-label', t('overlayLabel'));
+    const header = el('header');
+    header.append(el('span', 'icon', '▦'), el('span', 'count', countLabel(s.entries.length)));
+    if (s.phase === 'scanning') {
+      const spinner = el('span', 'spinner');
+      spinner.setAttribute('role', 'status');
+      spinner.setAttribute('aria-label', t('scanning'));
+      header.append(spinner);
+    }
+    header.append(button('minimize', '–', t('minimize'), { type: 'minimize' }));
+    const list = el('ol', 'list');
+    list.append(...s.entries.map(row));
+    section.append(header, list);
+    if (s.errors.length > 0) {
+      const errors = el('ul', 'errors');
+      errors.append(...s.errors.map(errorLine));
+      section.append(errors);
+    }
+    return section;
+  };
+
+  const mount = (): ShadowRoot => {
+    if (root) return root;
+    host = doc.createElement('qr-scanner-overlay');
+    host.style.cssText = 'position: fixed; top: 8px; left: 8px; z-index: 2147483647;';
+    root = host.attachShadow({ mode: 'closed' });
+    doc.documentElement.append(host);
+    return root;
+  };
+
+  return {
+    render(state) {
+      if (!isVisible(state)) {
+        host?.remove();
+        host = null;
+        root = null;
+        return;
+      }
+      const style = el('style', undefined, overlayStyles);
+      const content = state.minimized
+        ? button('badge', `▦ ${state.entries.length}`, t('restore'), { type: 'restore' })
+        : panel(state);
+      mount().replaceChildren(style, content);
+    },
+    shadowRoot: () => root,
+  };
+}
