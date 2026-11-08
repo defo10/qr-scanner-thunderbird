@@ -62,7 +62,11 @@ export function createOverlayView(deps: OverlayViewDeps): OverlayView {
     if (cached) return cached;
     const display = toDisplay(entry);
     const li = el('li', 'entry');
-    const meta = el('div', 'meta', `${t(`format${entry.format}`)} · ${entry.sources.map(sourceLabel)[0] ?? ''}`);
+    const sources = entry.sources.map(sourceLabel);
+    const firstSource = sources[0] ?? '';
+    const sourceText = sources.length > 1 ? t('sourceMore', firstSource, sources.length - 1) : firstSource;
+    const meta = el('div', 'meta', `${t(`format${entry.format}`)} · ${sourceText}`);
+    meta.title = sources.join('\n');
     if (display.kind === 'binary') meta.append(' ', el('span', 'tag', t('binaryTag')));
     const actions = el('div', 'actions');
     actions.append(copyButton(doc, t, deps.copy, display.copy));

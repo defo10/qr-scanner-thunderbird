@@ -94,5 +94,9 @@
   "binaryTag": {
     "message": "binary",
     "description": "Tag on a code whose payload is binary data, shown as Base64."
+  },
+  "sourceMore": {
+    "message": "$1 +$2 more",
+    "description": "Source label of a code found in several places. $1 = first source, $2 = number of further sources."
   }
 }

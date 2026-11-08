@@ -141,4 +141,19 @@ describe('overlay panel', () => {
     expect(overlay.root()?.querySelectorAll('.copy')).toHaveLength(1);
     expect(overlay.clipboard).toEqual(['AAH/']);
   });
+
+  it('shows a code found in several places once, with "+N more" and all sources in the tooltip', () => {
+    const overlay = anOverlay();
+    const code = aDecodedCode({ text: 'SAME' });
+
+    overlay.send(
+      codesFrom('scan.png', code),
+      { type: 'codes', source: { kind: 'attachment', name: 'label.pdf', partName: '1.3', page: 3 }, codes: [code] },
+    );
+
+    const meta = overlay.root()?.querySelector('.meta');
+    expect(overlay.entries()).toHaveLength(1);
+    expect(meta?.textContent).toBe('Data Matrix · scan.png +1 more');
+    expect(meta?.getAttribute('title')).toBe('scan.png\nlabel.pdf · p.3');
+  });
 });

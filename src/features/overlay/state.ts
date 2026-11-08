@@ -1,5 +1,6 @@
 import type { ScanEvent } from '../../shared/port-protocol';
 import type { ScanEntry, SourceError } from '../../shared/types';
+import { mergeCodes } from './dedupe';
 
 export interface OverlayState {
   readonly phase: 'waiting' | 'scanning' | 'done' | 'idle';
@@ -24,7 +25,7 @@ export function reduce(s: OverlayState, e: ScanEvent | UiAction): OverlayState {
     case 'scan-started':
       return { ...s, phase: 'scanning' };
     case 'codes':
-      return { ...s, entries: [...s.entries, ...e.codes.map(code => ({ ...code, sources: [e.source] }))] };
+      return { ...s, entries: mergeCodes(s.entries, e.codes, e.source) };
     case 'source-error':
       return { ...s, errors: [...s.errors, { source: e.source, reason: e.reason, ...(e.detail ? { detail: e.detail } : {}) }] };
     case 'scan-finished':
