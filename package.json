@@ -14,11 +14,15 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && npm run build && web-ext lint --source-dir dist",
     "test": "vitest run --passWithNoTests",
-    "package": "npm run build && web-ext build --source-dir dist --artifacts-dir dist --filename \"qr-scanner-{version}.xpi\" --overwrite-dest"
+    "package": "npm run build && web-ext build --source-dir dist --artifacts-dir dist --filename \"qr-scanner-{version}.xpi\" --overwrite-dest",
+    "fixtures": "tsx scripts/gen-fixtures.ts",
+    "bench": "tsx scripts/bench.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@napi-rs/canvas": "1.1.0",
     "@types/node": "22.20.5",
+    "bwip-js": "4.11.4",
     "esbuild": "0.28.2",
     "eslint": "10.14.0",
     "tsx": "4.23.15",
@@ -26,5 +30,8 @@
     "typescript-eslint": "8.72.1",
     "vitest": "5.1.0",
     "web-ext": "10.8.0"
+  },
+  "dependencies": {
+    "zxing-wasm": "3.1.6"
   }
 }
