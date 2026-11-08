@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && npm run build && web-ext lint --source-dir dist",
     "test": "vitest run --passWithNoTests",
-    "package": "npm run build && web-ext build --source-dir dist --artifacts-dir dist --filename \"qr-scanner-{version}.xpi\" --overwrite-dest",
+    "package": "npm run build && web-ext lint --source-dir dist && web-ext build --source-dir dist --artifacts-dir dist --filename \"qr-scanner-{version}.xpi\" --overwrite-dest && tsx scripts/check-size.ts",
     "fixtures": "tsx scripts/gen-fixtures.ts",
     "bench": "tsx scripts/bench.ts"
   },
