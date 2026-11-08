@@ -28,6 +28,10 @@ export interface FakeMessage {
 export interface DisplaySession {
   /** Resolves with every event received up to and including `scan-finished` or `idle`. */
   readonly events: Promise<ScanEvent[]>;
+  /** Events received so far. */
+  readonly received: () => ScanEvent[];
+  /** The display script goes away: the user moved to another message. */
+  readonly disconnect: () => void;
 }
 
 type Listener<A extends unknown[]> = (...args: A) => void;
@@ -103,6 +107,7 @@ export function createFakeMessenger() {
   const attachmentDownloads: { messageId: number; partName: string }[] = [];
   const onConnect = fakeEvent<[messenger.runtime.Port]>();
   const onNewMailReceived = fakeEvent<[unknown, unknown]>();
+  const session = new Map<string, unknown>();
   let nextMessageId = 1;
   let nextTabId = 1;
 
@@ -117,6 +122,15 @@ export function createFakeMessenger() {
       onConnect: onConnect.api,
       connect: () => { throw new Error('the fake has no display-side runtime.connect'); },
       getURL: path => `moz-extension://fake/${path}`,
+    },
+    storage: {
+      session: {
+        get: key => Promise.resolve(Object.fromEntries(
+          (typeof key === 'string' ? [key] : key ?? [...session.keys()]).filter(k => session.has(k)).map(k => [k, structuredClone(session.get(k))]),
+        )),
+        set: items => { Object.entries(items).forEach(([k, v]) => session.set(k, structuredClone(v))); return Promise.resolve(); },
+        remove: keys => { [keys].flat().forEach(k => session.delete(k)); return Promise.resolve(); },
+      },
     },
     i18n: {
       getMessage: (key, subs) => englishMessage(key, typeof subs === 'string' ? [subs] : subs),
@@ -163,6 +177,7 @@ export function createFakeMessenger() {
   function connectDisplayPort(tabId: number): DisplaySession {
     const received: ScanEvent[] = [];
     const disconnect = fakeEvent<[messenger.runtime.Port]>();
+    let backgroundPort: messenger.runtime.Port | undefined;
     const events = new Promise<ScanEvent[]>(resolve => {
       const port: messenger.runtime.Port = {
         name: 'scan',
@@ -176,14 +191,20 @@ export function createFakeMessenger() {
         onMessage: fakeEvent<[unknown, messenger.runtime.Port]>().api,
         onDisconnect: disconnect.api,
       };
+      backgroundPort = port;
       onConnect.fire(port);
     });
-    return { events };
+    return {
+      events,
+      received: () => [...received],
+      disconnect: () => { if (backgroundPort) disconnect.fire(backgroundPort); },
+    };
   }
 
   return {
     messenger: messengerApi,
     attachmentDownloads: () => [...attachmentDownloads],
+    sessionStorageKeys: () => [...session.keys()],
     newMailListenerCount: () => onNewMailReceived.listeners.length,
 
     /** Stores the message and returns its id. */

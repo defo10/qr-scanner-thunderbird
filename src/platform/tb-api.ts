@@ -79,6 +79,11 @@ export function createTbApi(m: Messenger) {
       return m.i18n.getMessage(key, substitutions);
     },
 
+    sessionStore: {
+      get: async (key: string): Promise<unknown> => (await m.storage.session.get(key))[key],
+      set: (key: string, value: unknown): Promise<void> => m.storage.session.set({ [key]: value }),
+    },
+
     extensionUrl(path: string): string {
       return m.runtime.getURL(path);
     },

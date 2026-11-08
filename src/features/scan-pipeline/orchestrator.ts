@@ -3,6 +3,7 @@ import type { TbApi } from '../../platform/tb-api';
 import type { ScanEvent } from '../../shared/port-protocol';
 import type { CodeFormat } from '../../shared/types';
 import { planSources, type PlannedSource } from './plan-sources';
+import type { ResultEvent, ScanCache } from './session-cache';
 import type { WorkerClient } from './worker-client';
 
 export interface ScanSettings {
@@ -18,6 +19,8 @@ export type ScanTb = Pick<
 export interface ScanContext {
   readonly tb: ScanTb;
   readonly worker: WorkerClient;
+  readonly cache: ScanCache;
+  readonly signal: AbortSignal;
   readonly htmlParser: DOMParser;
   readonly settings: ScanSettings;
   readonly tabId: number;
@@ -25,20 +28,40 @@ export interface ScanContext {
 
 export type Emit = (event: ScanEvent) => void;
 
-// Sources are scanned one after another, and each source's result is emitted
-// as soon as it is known.
-export async function runScan(ctx: ScanContext, emit: Emit): Promise<void> {
+// - Sources are scanned one after another, and each source's result is
+//   emitted as soon as it is known.
+// - Once the signal aborts (the message is no longer displayed), nothing more
+//   is emitted and nothing is cached; only complete scans are cached.
+// - A cache hit replays the same event sequence a fresh scan would produce.
+export async function runScan(ctx: ScanContext, emitEvent: Emit): Promise<void> {
+  const emit: Emit = e => { if (!ctx.signal.aborted) emitEvent(e); };
   const message = await ctx.tb.getDisplayedMessage(ctx.tabId);
   if (!message || message.junk || message.inJunkFolder) return emit({ type: 'idle' });
+
+  const cached = await ctx.cache.read(message.id, ctx.settings);
+  if (cached) {
+    emit({ type: 'scan-started', sourceCount: cached.sourceCount });
+    cached.events.forEach(emit);
+    return emit({ type: 'scan-finished' });
+  }
+
   const [attachments, inline] = await Promise.all([
     ctx.tb.listAttachments(message.id),
     ctx.settings.scanInlineImages ? findInlineSources(ctx, message.id) : { inlineParts: [], dataUris: [] },
   ]);
   const sources = planSources({ attachments, ...inline });
   if (sources.length === 0) return emit({ type: 'idle' });
+
+  const results: ResultEvent[] = [];
+  const emitResult = (e: ResultEvent) => { results.push(e); emit(e); };
   emit({ type: 'scan-started', sourceCount: sources.length });
-  for (const source of sources) await scanSource(ctx, message.id, source, emit);
+  for (const source of sources) {
+    if (ctx.signal.aborted) return;
+    await scanSource(ctx, message.id, source, emitResult);
+  }
+  if (ctx.signal.aborted) return;
   emit({ type: 'scan-finished' });
+  await ctx.cache.write(message.id, ctx.settings, { sourceCount: sources.length, events: results });
 }
 
 // Inline discovery is best effort: a message whose structure or body cannot be
@@ -64,7 +87,7 @@ async function readBytes(ctx: ScanContext, messageId: number, source: PlannedSou
   return (await ctx.tb.getAttachmentFile(messageId, source.bytes.partName)).arrayBuffer();
 }
 
-async function scanSource(ctx: ScanContext, messageId: number, source: PlannedSource, emit: Emit): Promise<void> {
+async function scanSource(ctx: ScanContext, messageId: number, source: PlannedSource, emit: (e: ResultEvent) => void): Promise<void> {
   let bytes: ArrayBuffer;
   try {
     bytes = await readBytes(ctx, messageId, source);
@@ -74,6 +97,7 @@ async function scanSource(ctx: ScanContext, messageId: number, source: PlannedSo
   const outcome = await ctx.worker.run(
     { kind: 'image', bytes, mime: source.mime, decode: { formats: ctx.settings.formats } },
     codes => { if (codes.length > 0) emit({ type: 'codes', source: source.ref, codes }); },
-  ).catch(() => ({ ok: false, reason: 'unreadable' }) as const);
-  if (!outcome.ok) emit({ type: 'source-error', source: source.ref, reason: outcome.reason });
+    ctx.signal,
+  ).catch(() => ({ status: 'error', reason: 'unreadable' }) as const);
+  if (outcome.status === 'error') emit({ type: 'source-error', source: source.ref, reason: outcome.reason });
 }

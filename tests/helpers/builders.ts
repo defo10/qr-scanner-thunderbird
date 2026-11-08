@@ -47,14 +47,22 @@ export function corruptPng(): Uint8Array {
 /** A background scan service wired to a fake messenger and an in-process worker. */
 export const defaultScanSettings: ScanSettings = { formats: ALL_CODE_FORMATS, scanInlineImages: true };
 
-export function aRunningScanService(settings: ScanSettings = defaultScanSettings) {
+export function aRunningScanService(options: { settings?: ScanSettings; hangOnJob?: number } = {}) {
+  let settings = options.settings ?? defaultScanSettings;
+  let wasmLoads = 0;
   const mail = createFakeMessenger();
-  const workers = createFakeWorkerHost();
-  const worker = createWorkerClient({ spawn: workers.spawn, loadWasm: nodeZxingWasm });
+  const workers = createFakeWorkerHost(options.hangOnJob === undefined ? {} : { hangOnJob: options.hangOnJob });
+  const loadWasm = () => { wasmLoads++; return nodeZxingWasm(); };
+  const worker = createWorkerClient({ spawn: workers.spawn, loadWasm });
   // happy-dom's types differ slightly from lib.dom's, the behavior does not.
   const htmlParser = new new Window().DOMParser() as unknown as DOMParser;
   startScanService({ tb: createTbApi(mail.messenger), worker, htmlParser, settings: () => settings });
-  return { mail, workers };
+  return {
+    mail,
+    workers,
+    wasmLoads: () => wasmLoads,
+    changeSettings: (next: ScanSettings) => { settings = next; },
+  };
 }
 
 export function aDecodedCode(overrides: Partial<DecodedCode> = {}): DecodedCode {

@@ -2,12 +2,21 @@ import type { SpawnWorker, WorkerHandle } from '../../platform/worker-host';
 import type { DecodedCode, ErrorReason } from '../../shared/types';
 import type { ImageJob, WorkerResponse } from '../../shared/worker-protocol';
 
-export type JobOutcome = { readonly ok: true } | { readonly ok: false; readonly reason: ErrorReason };
+export type JobOutcome =
+  | { readonly status: 'done' }
+  | { readonly status: 'error'; readonly reason: ErrorReason }
+  | { readonly status: 'aborted' };
 
 export type OnCodes = (codes: readonly DecodedCode[], page?: number) => void;
 
 export interface WorkerClient {
-  run(job: ImageJob, onCodes: OnCodes): Promise<JobOutcome>;
+  run(job: ImageJob, onCodes: OnCodes, signal: AbortSignal): Promise<JobOutcome>;
+}
+
+export interface WorkerClientDeps {
+  readonly spawn: SpawnWorker;
+  readonly loadWasm: () => Promise<WebAssembly.Module>;
+  readonly idleTimeoutMs?: number;
 }
 
 interface ActiveJob {
@@ -16,28 +25,40 @@ interface ActiveJob {
   readonly finish: (outcome: JobOutcome) => void;
 }
 
+const DEFAULT_IDLE_TIMEOUT_MS = 60_000;
+
 // - One worker runs one job at a time; concurrent callers are queued.
-// - The worker is spawned lazily and replaced after it crashes.
-// - The WASM module is compiled once and handed to every worker, so a
+// - Terminating is the only way to stop a running WASM call, so an abort
+//   terminates the worker, but only while one of its jobs is in flight; an
+//   idle worker is kept for the next job. An idle worker is released after
+//   idleTimeoutMs to free its memory.
+// - Workers are spawned lazily and replaced after termination or a crash.
+//   The WASM module is compiled once and handed to every new worker, so a
 //   respawn only pays for instantiation.
-export function createWorkerClient(deps: { spawn: SpawnWorker; loadWasm: () => Promise<WebAssembly.Module> }): WorkerClient {
+export function createWorkerClient(deps: WorkerClientDeps): WorkerClient {
+  const idleTimeoutMs = deps.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
   let wasm: Promise<WebAssembly.Module> | undefined;
   let worker: WorkerHandle | undefined;
   let active: ActiveJob | undefined;
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
   let nextJobId = 1;
   let queue: Promise<unknown> = Promise.resolve();
+
+  const discardWorker = () => {
+    worker?.terminate();
+    worker = undefined;
+  };
 
   const onResponse = (r: WorkerResponse) => {
     if (!active || r.jobId !== active.id) return;
     if (r.type === 'codes') active.onCodes(r.codes, r.page);
-    else if (r.type === 'done') active.finish({ ok: true });
-    else active.finish({ ok: false, reason: r.reason });
+    else if (r.type === 'done') active.finish({ status: 'done' });
+    else active.finish({ status: 'error', reason: r.reason });
   };
 
   const onCrash = () => {
-    worker?.terminate();
-    worker = undefined;
-    active?.finish({ ok: false, reason: 'unreadable' });
+    discardWorker();
+    active?.finish({ status: 'error', reason: 'unreadable' });
   };
 
   const ensureWorker = async (): Promise<WorkerHandle> => {
@@ -52,20 +73,30 @@ export function createWorkerClient(deps: { spawn: SpawnWorker; loadWasm: () => P
     return spawned;
   };
 
-  const runNow = async (job: ImageJob, onCodes: OnCodes): Promise<JobOutcome> => {
+  const runNow = async (job: ImageJob, onCodes: OnCodes, signal: AbortSignal): Promise<JobOutcome> => {
+    if (signal.aborted) return { status: 'aborted' };
+    clearTimeout(idleTimer);
     const w = await ensureWorker();
     const id = nextJobId++;
+    const onAbort = () => {
+      if (active?.id !== id) return;
+      discardWorker();
+      active.finish({ status: 'aborted' });
+    };
     const outcome = await new Promise<JobOutcome>(finish => {
       active = { id, onCodes, finish };
+      signal.addEventListener('abort', onAbort, { once: true });
       w.post({ type: 'scan', jobId: id, ...job }, [job.bytes]);
     });
+    signal.removeEventListener('abort', onAbort);
     active = undefined;
+    idleTimer = setTimeout(discardWorker, idleTimeoutMs);
     return outcome;
   };
 
   return {
-    run(job, onCodes) {
-      const result = queue.then(() => runNow(job, onCodes));
+    run(job, onCodes, signal) {
+      const result = queue.then(() => runNow(job, onCodes, signal));
       queue = result.catch(() => undefined);
       return result;
     },

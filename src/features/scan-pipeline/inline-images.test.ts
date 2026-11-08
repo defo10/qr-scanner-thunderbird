@@ -78,7 +78,7 @@ describe('scanning images embedded in the message body', () => {
   });
 
   it('scans only attachments when inline scanning is switched off', async () => {
-    const { mail } = aRunningScanService({ ...defaultScanSettings, scanInlineImages: false });
+    const { mail } = aRunningScanService({ settings: { ...defaultScanSettings, scanInlineImages: false } });
     const id = mail.deliver({
       ...anHtmlMessage('<img src="cid:x">', aCidImage('x', fixture('qr-url.png'))),
       attachments: [anImageAttachment('label.png', fixture('datamatrix-plain.png'))],
