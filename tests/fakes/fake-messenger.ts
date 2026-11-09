@@ -111,6 +111,9 @@ export function createFakeMessenger() {
   const onConnect = fakeEvent<[messenger.runtime.Port]>();
   const onNewMailReceived = fakeEvent<[unknown, unknown]>();
   const session = new Map<string, unknown>();
+  const onStartup = fakeEvent<[]>();
+  // Like Thunderbird: registrations live until the application restarts.
+  let displayScripts: messenger.scripting.messageDisplay.MessageDisplayScriptDetails[] = [];
   const onScanActionClicked = fakeEvent<[messenger.tabs.Tab, unknown]>();
   let scanActionEnabled = true;
   let nextMessageId = 1;
@@ -125,6 +128,7 @@ export function createFakeMessenger() {
   const messengerApi: Messenger = {
     runtime: {
       onConnect: onConnect.api,
+      onStartup: onStartup.api,
       connect: () => { throw new Error('the fake has no display-side runtime.connect'); },
       getURL: path => `moz-extension://fake/${path}`,
     },
@@ -183,9 +187,19 @@ export function createFakeMessenger() {
     },
     scripting: {
       messageDisplay: {
-        registerScripts: () => Promise.resolve(),
-        getRegisteredScripts: () => Promise.resolve([]),
-        unregisterScripts: () => Promise.resolve(),
+        registerScripts: async scripts => {
+          await Promise.resolve();
+          if (scripts.some(s => displayScripts.some(d => d.id === s.id))) throw new Error('script id already registered');
+          displayScripts = [...displayScripts, ...scripts];
+        },
+        getRegisteredScripts: async filter => {
+          await Promise.resolve();
+          return displayScripts.filter(d => !filter?.ids || filter.ids.includes(d.id));
+        },
+        unregisterScripts: filter => {
+          displayScripts = displayScripts.filter(d => filter?.ids && !filter.ids.includes(d.id));
+          return Promise.resolve();
+        },
       },
     },
   };
@@ -223,6 +237,12 @@ export function createFakeMessenger() {
     attachmentDownloads: () => [...attachmentDownloads],
     sessionStorageKeys: () => [...session.keys()],
     isScanActionEnabled: () => scanActionEnabled,
+    registeredDisplayScripts: () => displayScripts.map(d => ({ ...d })),
+    /** Thunderbird quits and starts again: registrations are gone, then runtime.onStartup fires. */
+    restartThunderbird: () => {
+      displayScripts = [];
+      onStartup.fire();
+    },
     clickScanAction: (tabId: number) => onScanActionClicked.fire({ id: tabId }, undefined),
     newMailListenerCount: () => onNewMailReceived.listeners.length,
 
