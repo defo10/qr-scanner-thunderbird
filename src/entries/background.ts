@@ -16,4 +16,4 @@ startScanService({
   settings: () => loadSettings(tb.localStore),
   onSettingsChanged: listener => tb.onLocalStorageChanged(SETTINGS_KEY, listener),
 });
-void tb.registerDisplayScript({ js: ['display.js'] });
+tb.keepDisplayScriptRegistered({ js: ['display.js'] });

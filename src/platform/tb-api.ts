@@ -50,16 +50,37 @@ export function defaultTbApi(): TbApi {
 }
 
 export function createTbApi(m: Messenger) {
-  return {
-    // - TB 128 MV3 offers only scripting.messageDisplay (needs the `scripting`
-    //   and `messagesRead` permissions); messageDisplayScripts is not usable there.
-    // - Registrations outlive event-page suspension, and registering an existing
-    //   id rejects the whole call, so register only when missing.
-    async registerDisplayScript(files: { js: string[]; css?: string[] }): Promise<void> {
-      const api = m.scripting.messageDisplay;
+  let registration: Promise<void> = Promise.resolve();
+
+  // - TB 128 MV3 offers only scripting.messageDisplay (needs the `scripting`
+  //   and `messagesRead` permissions); messageDisplayScripts is not usable there.
+  // - Registrations outlive event-page suspension, and registering an existing
+  //   id rejects the whole call, so register only when missing. Calls are
+  //   serialized so overlapping ones cannot both see "missing".
+  const registerDisplayScript = (files: { js: string[]; css?: string[] }): Promise<void> => {
+    const api = m.scripting.messageDisplay;
+    registration = registration.catch(() => undefined).then(async () => {
       const existing = await api.getRegisteredScripts({ ids: [DISPLAY_SCRIPT_ID] });
-      if (existing.length > 0) return;
-      await api.registerScripts([{ id: DISPLAY_SCRIPT_ID, ...files }]);
+      if (existing.length === 0) await api.registerScripts([{ id: DISPLAY_SCRIPT_ID, ...files }]);
+    });
+    return registration;
+  };
+
+  return {
+    registerDisplayScript,
+
+    // Registrations do not survive a Thunderbird restart, and the event page is
+    // not started at launch unless it listens to runtime.onStartup. Without
+    // that listener nothing would register the script after a restart, so no
+    // display script would ever connect and wake the page. Must be called at
+    // background top level; it also registers right away for install, update
+    // and reload, which start the page without onStartup.
+    keepDisplayScriptRegistered(files: { js: string[]; css?: string[] }): void {
+      const register = () => {
+        registerDisplayScript(files).catch((e: unknown) => console.error('registering the display script failed', e));
+      };
+      m.runtime.onStartup.addListener(register);
+      register();
     },
 
     // Must be called synchronously at background top level: runtime.onConnect

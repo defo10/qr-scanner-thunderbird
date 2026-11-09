@@ -26,6 +26,7 @@ declare namespace messenger {
     }
 
     const onConnect: WebExtEvent<(port: Port) => void>;
+    const onStartup: WebExtEvent<() => void>;
     function connect(connectInfo?: { name?: string }): Port;
     function getURL(path: string): string;
   }
